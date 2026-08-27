@@ -96,3 +96,19 @@ CREATE POLICY "Allow all access to invoices" ON invoices
     FOR ALL
     USING (true)
     WITH CHECK (true);
+
+-- 6. Sample Initial Data (Phòng mẫu & Khách thuê)
+INSERT INTO rooms (id, code, base_price, status)
+VALUES 
+    ('11111111-1111-1111-1111-111111111111', 'P101', 3200000, 'rented'),
+    ('22222222-2222-2222-2222-222222222222', 'P102', 3500000, 'rented'),
+    ('33333333-3333-3333-3333-333333333333', 'P103', 2800000, 'empty'),
+    ('44444444-4444-4444-4444-444444444444', 'P201', 3000000, 'empty')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO tenants (id, room_id, name, phone, cccd, is_lead, start_date, deposit_amount, status)
+VALUES
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'Nguyễn Văn An', '0901234567', '001090001234', true, CURRENT_DATE - INTERVAL '60 days', 3200000, 'active'),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222', 'Trần Thị Bình', '0912345678', '001090005678', true, CURRENT_DATE - INTERVAL '30 days', 3500000, 'active')
+ON CONFLICT (id) DO NOTHING;
+
