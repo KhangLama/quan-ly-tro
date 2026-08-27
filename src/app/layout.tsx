@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Quản Lý Nhà Trọ",
-  description: "Web App Quản Lý Nhà Trọ — Đơn giản, nhanh chóng trên mobile",
+  title: "Nhà trọ Trúc Lam",
+  description: "Ứng dụng quản lý Nhà trọ Trúc Lam — Đơn giản, nhanh chóng trên mobile",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Quản Lý Nhà Trọ",
+    title: "Nhà trọ Trúc Lam",
   },
 };
 

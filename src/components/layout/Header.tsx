@@ -40,7 +40,7 @@ export function Header() {
           </div>
           <div>
             <h1 className="text-base font-bold text-slate-900 leading-none">
-              Nhà Trọ 2026
+              Nhà trọ Trúc Lam
             </h1>
             <span className="text-[11px] font-medium text-slate-500">
               {todayFormatted}

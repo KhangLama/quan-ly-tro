@@ -66,7 +66,7 @@ export default function LoginPage() {
             <Building2 className="w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Quản Lý Nhà Trọ
+            Nhà trọ Trúc Lam
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Đăng nhập tài khoản quản trị
