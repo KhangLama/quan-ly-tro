@@ -15,6 +15,7 @@ export interface InvoiceFormDataResult {
   settings: Setting | null;
   rooms: Room[];
   selectedRoom: Room | null;
+  leadTenant?: { id: string; name: string; phone?: string | null } | null;
   previousReading: {
     old_electric: number;
     old_water: number;
@@ -90,10 +91,22 @@ export async function getInvoiceFormData(
     const old_electric = latestPrior ? Number(latestPrior.new_electric) : 0;
     const old_water = latestPrior ? Number(latestPrior.new_water) : 0;
 
+    // 4. Fetch lead tenant for this room
+    const { data: tenantsData } = await supabase
+      .from("tenants")
+      .select("id, name, phone, is_lead")
+      .eq("room_id", selectedRoom.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: true });
+
+    const activeTenants = tenantsData || [];
+    const leadTenant = activeTenants.find((t: any) => t.is_lead) || activeTenants[0] || null;
+
     return {
       settings: settingsData,
       rooms,
       selectedRoom,
+      leadTenant: leadTenant ? { id: leadTenant.id, name: leadTenant.name, phone: leadTenant.phone } : null,
       previousReading: {
         old_electric,
         old_water,

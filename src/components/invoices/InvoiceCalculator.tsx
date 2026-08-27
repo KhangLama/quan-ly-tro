@@ -16,6 +16,9 @@ import {
   Calendar,
   DollarSign,
   Share2,
+  ImageIcon,
+  FileText,
+  Sparkles,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -30,6 +33,7 @@ import {
   toggleInvoiceStatus,
   type InvoiceFormDataResult,
 } from "@/actions/invoices";
+import { ReceiptModal, type ReceiptData } from "./ReceiptModal";
 import type { Invoice, Room, Setting } from "@/types";
 
 interface InvoiceCalculatorProps {
@@ -62,6 +66,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
   const [copiedZalo, setCopiedZalo] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [savedInvoice, setSavedInvoice] = useState<Invoice | null>(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   // Load initial form data when room or month changes
   const loadData = useCallback(async (targetRoomId?: string, targetMonth?: string) => {
@@ -205,6 +210,41 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
   };
 
   const selectedRoom = formData?.rooms.find((r) => r.id === roomId);
+
+  const receiptData: ReceiptData | null = useMemo(() => {
+    if (!selectedRoom) return null;
+    return {
+      roomCode: selectedRoom.code,
+      month,
+      customerName: formData?.leadTenant?.name || undefined,
+      bankInfo: formData?.settings?.bank_info || undefined,
+      address: "325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ",
+      oldElectric: Number(oldElectric) || 0,
+      newElectric: Number(newElectric) || 0,
+      electricPrice,
+      electricCost: calculation.electricCost,
+      electricUsage: calculation.electricUsage,
+      oldWater: Number(oldWater) || 0,
+      newWater: Number(newWater) || 0,
+      waterPrice,
+      waterCost: calculation.waterCost,
+      waterUsage: calculation.waterUsage,
+      basePrice: calculation.basePrice,
+      servicePrice: calculation.servicePrice,
+      totalAmount: calculation.totalAmount,
+    };
+  }, [
+    selectedRoom,
+    month,
+    formData,
+    oldElectric,
+    newElectric,
+    electricPrice,
+    oldWater,
+    newWater,
+    waterPrice,
+    calculation,
+  ]);
 
   return (
     <div className="space-y-4">
@@ -473,39 +513,58 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
         )}
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-2.5 pt-2">
-          {/* Copy Zalo Button */}
+        <div className="space-y-2.5 pt-2">
+          {/* View & Download Receipt Image Button */}
           <Button
             type="button"
-            variant="outline"
-            onClick={handleCopyZalo}
-            className="w-full bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5 text-xs h-11"
+            onClick={() => setShowReceiptModal(true)}
+            className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs h-11 gap-2 shadow-md shadow-amber-500/20"
           >
-            {copiedZalo ? (
-              <>
-                <Check className="w-4 h-4 text-emerald-400" />
-                <span className="text-emerald-300 font-bold">Đã copy Zalo!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4 text-sky-400" />
-                <span>Copy tin Zalo</span>
-              </>
-            )}
+            <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950" />
+            <span>Xem & Tải ảnh phiếu báo tiền phòng (Biên lai)</span>
           </Button>
 
-          {/* Save Invoice Button */}
-          <Button
-            type="button"
-            onClick={() => handleSave("pending")}
-            isLoading={saving}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5 text-xs font-bold h-11 shadow-md shadow-indigo-500/30"
-          >
-            <Save className="w-4 h-4" />
-            <span>Lưu hóa đơn</span>
-          </Button>
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Copy Zalo Button */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCopyZalo}
+              className="w-full bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5 text-xs h-11"
+            >
+              {copiedZalo ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span className="text-emerald-300 font-bold">Đã copy Zalo!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 text-sky-400" />
+                  <span>Copy tin Zalo</span>
+                </>
+              )}
+            </Button>
+
+            {/* Save Invoice Button */}
+            <Button
+              type="button"
+              onClick={() => handleSave("pending")}
+              isLoading={saving}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5 text-xs font-bold h-11 shadow-md shadow-indigo-500/30"
+            >
+              <Save className="w-4 h-4" />
+              <span>Lưu hóa đơn</span>
+            </Button>
+          </div>
         </div>
       </Card>
+
+      {/* Receipt Modal for previewing and downloading image */}
+      <ReceiptModal
+        isOpen={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        data={receiptData}
+      />
     </div>
   );
 }
