@@ -2,20 +2,23 @@
 -- Web App Quản Lý Nhà Trọ - Initial Database Schema Migration
 -- ==============================================================================
 
--- 1. Table: settings (Singleton table for global utility rates and banking info)
+-- 1. Table: settings (Singleton table for global utility rates, receipt customizations, and banking info)
 CREATE TABLE IF NOT EXISTS settings (
     id INT PRIMARY KEY DEFAULT 1,
     electric_price NUMERIC NOT NULL DEFAULT 3500,
     water_price NUMERIC NOT NULL DEFAULT 25000,
     service_price NUMERIC NOT NULL DEFAULT 100000,
     bank_info TEXT NOT NULL DEFAULT 'MBBank - 0987654321 - NGUYEN VAN A',
+    address TEXT DEFAULT '325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ',
+    service_description TEXT DEFAULT 'Dịch vụ chung (Rác, Wifi, ...)',
+    receipt_note TEXT DEFAULT '',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT singleton_check CHECK (id = 1)
 );
 
 -- Seed default settings row if not exists
-INSERT INTO settings (id, electric_price, water_price, service_price, bank_info, updated_at)
-VALUES (1, 3500, 25000, 100000, 'MBBank - 0987654321 - NGUYEN VAN A', NOW())
+INSERT INTO settings (id, electric_price, water_price, service_price, bank_info, address, service_description, receipt_note, updated_at)
+VALUES (1, 3500, 25000, 100000, 'MBBank - 0987654321 - NGUYEN VAN A', '325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ', 'Dịch vụ chung (Rác, Wifi, ...)', '', NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Table: rooms (Rental rooms)

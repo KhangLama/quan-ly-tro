@@ -16,6 +16,9 @@ export interface Database {
           water_price: number;
           service_price: number;
           bank_info: string;
+          address?: string;
+          service_description?: string;
+          receipt_note?: string;
           updated_at: string;
         };
         Insert: {
@@ -24,6 +27,9 @@ export interface Database {
           water_price?: number;
           service_price?: number;
           bank_info?: string;
+          address?: string;
+          service_description?: string;
+          receipt_note?: string;
           updated_at?: string;
         };
         Update: {
@@ -32,6 +38,9 @@ export interface Database {
           water_price?: number;
           service_price?: number;
           bank_info?: string;
+          address?: string;
+          service_description?: string;
+          receipt_note?: string;
           updated_at?: string;
         };
       };

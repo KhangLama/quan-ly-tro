@@ -14,6 +14,8 @@ export interface ReceiptData {
   reportDate?: string; // e.g. "07/05/2026"
   address?: string;
   bankInfo?: string;
+  serviceDescription?: string;
+  receiptNote?: string;
   oldElectric: number;
   newElectric: number;
   electricPrice: number;
@@ -255,7 +257,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                 <tr>
                   <td className="border-r border-black p-1.5 font-medium">4- Phí khác</td>
                   <td className="border-r border-black p-1.5 text-[11px] text-slate-600">
-                    Dịch vụ chung (Rác, Wifi, ...)
+                    {data.serviceDescription || "Dịch vụ chung (Rác, Wifi, ...)"}
                   </td>
                   <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">{formatVND(data.servicePrice)} đ</td>
                   <td className="border-r border-black p-1.5 text-center">1</td>
@@ -276,7 +278,9 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                 <tr>
                   <td className="border-r border-black p-2 font-bold italic">Ghi chú:</td>
                   <td colSpan={4} className="p-2 text-xs text-slate-700 font-medium">
-                    {data.bankInfo ? (
+                    {data.receiptNote ? (
+                      <div>{data.receiptNote}</div>
+                    ) : data.bankInfo ? (
                       <div>
                         Thanh toán STK: <strong>{data.bankInfo}</strong> (Cú pháp: P{data.roomCode} TT thang {data.month})
                       </div>

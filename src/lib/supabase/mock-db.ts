@@ -13,6 +13,9 @@ const DEFAULT_SETTINGS: Setting = {
   water_price: 25000,
   service_price: 100000,
   bank_info: "MBBank - 0987654321 - NGUYEN VAN A",
+  address: "325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ",
+  service_description: "Dịch vụ chung (Rác, Wifi, ...)",
+  receipt_note: "",
   updated_at: new Date().toISOString(),
 };
 

@@ -43,6 +43,9 @@ export async function updateSettings(data: {
   water_price?: number;
   service_price?: number;
   bank_info?: string;
+  address?: string;
+  service_description?: string;
+  receipt_note?: string;
 }): Promise<SettingsActionResult> {
   try {
     const supabase = await createClient();
@@ -52,6 +55,9 @@ export async function updateSettings(data: {
     if (data.water_price !== undefined) updatePayload.water_price = Number(data.water_price);
     if (data.service_price !== undefined) updatePayload.service_price = Number(data.service_price);
     if (data.bank_info !== undefined) updatePayload.bank_info = data.bank_info.trim();
+    if (data.address !== undefined) updatePayload.address = data.address.trim();
+    if (data.service_description !== undefined) updatePayload.service_description = data.service_description.trim();
+    if (data.receipt_note !== undefined) updatePayload.receipt_note = data.receipt_note.trim();
 
     const { data: updated, error } = await supabase
       .from("settings")

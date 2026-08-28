@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Zap, Droplet, Shield, CreditCard, Save, RotateCcw, CheckCircle2, AlertCircle } from "lucide-react";
+import { Zap, Droplet, Shield, CreditCard, Save, RotateCcw, CheckCircle2, AlertCircle, MapPin, FileText } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -14,6 +14,9 @@ export function SettingsForm() {
   const [waterPrice, setWaterPrice] = useState("25000");
   const [servicePrice, setServicePrice] = useState("100000");
   const [bankInfo, setBankInfo] = useState("MB Bank - 0987654321 - NGUYEN VAN A");
+  const [address, setAddress] = useState("325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ");
+  const [serviceDescription, setServiceDescription] = useState("Dịch vụ chung (Rác, Wifi, ...)");
+  const [receiptNote, setReceiptNote] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -28,6 +31,9 @@ export function SettingsForm() {
       setWaterPrice(String(res.settings.water_price));
       setServicePrice(String(res.settings.service_price));
       setBankInfo(res.settings.bank_info || "");
+      if (res.settings.address) setAddress(res.settings.address);
+      if (res.settings.service_description) setServiceDescription(res.settings.service_description);
+      if (res.settings.receipt_note !== undefined) setReceiptNote(res.settings.receipt_note || "");
     }
     setLoading(false);
   }, []);
@@ -47,6 +53,9 @@ export function SettingsForm() {
       water_price: Number(waterPrice) || 0,
       service_price: Number(servicePrice) || 0,
       bank_info: bankInfo,
+      address,
+      service_description: serviceDescription,
+      receipt_note: receiptNote,
     });
 
     setSaving(false);
@@ -64,6 +73,9 @@ export function SettingsForm() {
     setWaterPrice("25000");
     setServicePrice("100000");
     setBankInfo("MB Bank - 0987654321 - NGUYEN VAN A");
+    setAddress("325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ");
+    setServiceDescription("Dịch vụ chung (Rác, Wifi, ...)");
+    setReceiptNote("");
   };
 
   if (loading) {
@@ -165,6 +177,60 @@ export function SettingsForm() {
           </div>
           <p className="text-[11px] text-slate-500 mt-1">
             Bao gồm rác, wifi, vệ sinh: <strong>{formatVND(Number(servicePrice) || 0)}đ</strong>/tháng
+          </p>
+        </div>
+      </Card>
+
+      {/* Receipt Customization Card */}
+      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3.5">
+        <div className="flex items-center gap-1.5">
+          <FileText className="w-4 h-4 text-amber-600" />
+          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            Cấu hình Phiếu báo tiền phòng (Biên lai)
+          </h3>
+        </div>
+
+        {/* Inn Address */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-rose-500" />
+            <span>Địa chỉ nhà trọ (In góc trên biên lai)</span>
+          </label>
+          <Input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="e.g. 325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ"
+            className="text-xs font-medium"
+          />
+        </div>
+
+        {/* Service Name / Description */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            Tên / Mô tả khoản phí khác (Mục số 4 trên bảng biên lai)
+          </label>
+          <Input
+            value={serviceDescription}
+            onChange={(e) => setServiceDescription(e.target.value)}
+            placeholder="e.g. Dịch vụ chung (Rác, Wifi, ...)"
+            className="text-xs font-medium"
+          />
+        </div>
+
+        {/* Receipt Note */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            Nội dung ghi chú chân biên lai (Tùy chọn)
+          </label>
+          <textarea
+            rows={2}
+            value={receiptNote}
+            onChange={(e) => setReceiptNote(e.target.value)}
+            placeholder="Để trống sẽ tự động hiển thị hướng dẫn thanh toán kèm STK ngân hàng ở trên"
+            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <p className="text-[11px] text-slate-500 mt-1">
+            Nếu nhập, nội dung này sẽ thay thế câu ghi chú mặc định ở chân phiếu báo tiền phòng.
           </p>
         </div>
       </Card>
