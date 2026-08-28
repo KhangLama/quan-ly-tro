@@ -22,8 +22,10 @@ import { TenantCard } from "@/components/rooms/TenantCard";
 import { TenantHistory } from "@/components/rooms/TenantHistory";
 import { InvoiceHistory } from "@/components/rooms/InvoiceHistory";
 import { AddTenantModal } from "@/components/rooms/AddTenantModal";
+import { EditRoomModal } from "@/components/rooms/EditRoomModal";
 import { getRoomById, deleteRoom, type GetRoomDetailsResult } from "@/actions/rooms";
 import { formatVND } from "@/lib/utils";
+import { Edit2 } from "lucide-react";
 
 export default function RoomDetailPage() {
   const params = useParams();
@@ -33,6 +35,7 @@ export default function RoomDetailPage() {
   const [data, setData] = useState<GetRoomDetailsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
+  const [isEditRoomModalOpen, setIsEditRoomModalOpen] = useState(false);
 
   const fetchDetails = useCallback(async () => {
     setLoading(true);
@@ -131,15 +134,28 @@ export default function RoomDetailPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleDeleteRoom}
-            title="Xóa phòng"
-            aria-label="Xóa phòng"
-            className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-white/10 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setIsEditRoomModalOpen(true)}
+              title="Sửa phòng"
+              aria-label="Sửa thông tin phòng"
+              className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors flex items-center gap-1.5 text-xs font-semibold"
+            >
+              <Edit2 className="w-4 h-4 text-sky-300" />
+              <span className="hidden sm:inline">Sửa phòng</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDeleteRoom}
+              title="Xóa phòng"
+              aria-label="Xóa phòng"
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-white/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </Card>
 
@@ -210,6 +226,14 @@ export default function RoomDetailPage() {
         roomCode={room.code}
         isOpen={isAddTenantModalOpen}
         onClose={() => setIsAddTenantModalOpen(false)}
+        onSuccess={fetchDetails}
+      />
+
+      {/* Edit Room Modal */}
+      <EditRoomModal
+        room={room}
+        isOpen={isEditRoomModalOpen}
+        onClose={() => setIsEditRoomModalOpen(false)}
         onSuccess={fetchDetails}
       />
     </div>

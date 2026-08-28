@@ -55,8 +55,11 @@ export async function updateSettings(data: {
 
     const { data: updated, error } = await supabase
       .from("settings")
-      .update(updatePayload)
-      .eq("id", 1)
+      .upsert({
+        id: 1,
+        ...updatePayload,
+        updated_at: new Date().toISOString(),
+      })
       .select()
       .single();
 

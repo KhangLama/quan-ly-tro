@@ -25,10 +25,32 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadData(selectedMonth);
+
+    // Auto-refresh when tab gains focus
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadData(selectedMonth);
+      }
+    };
+
+    window.addEventListener("focus", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [selectedMonth, loadData]);
 
   return (
     <div className="space-y-4 pb-4 animate-in fade-in duration-200">
+      {/* Error alert if any */}
+      {data?.error && (
+        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl font-medium">
+          Lỗi tải dữ liệu: {data.error}
+        </div>
+      )}
+
       {/* Top Banner & Quick Action */}
       <div className="flex items-center justify-between">
         <div>

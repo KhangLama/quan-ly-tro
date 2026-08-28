@@ -127,7 +127,7 @@ interface OrderOp {
 
 export class MockQueryBuilder<T = any> implements PromiseLike<{ data: T | null; error: any; count?: number }> {
   private tableName: TableName;
-  private action: "select" | "insert" | "update" | "delete" = "select";
+  private action: "select" | "insert" | "update" | "delete" | "upsert" = "select";
   private selectColumns: string = "*";
   private insertPayload: any = null;
   private updatePayload: any = null;
@@ -142,7 +142,7 @@ export class MockQueryBuilder<T = any> implements PromiseLike<{ data: T | null; 
   }
 
   public select(columns: string = "*") {
-    if (this.action !== "insert" && this.action !== "update") {
+    if (this.action !== "insert" && this.action !== "update" && this.action !== "upsert") {
       this.action = "select";
     }
     this.selectColumns = columns;
@@ -151,6 +151,12 @@ export class MockQueryBuilder<T = any> implements PromiseLike<{ data: T | null; 
 
   public insert(values: any) {
     this.action = "insert";
+    this.insertPayload = values;
+    return this;
+  }
+
+  public upsert(values: any) {
+    this.action = "upsert";
     this.insertPayload = values;
     return this;
   }
@@ -291,6 +297,42 @@ export class MockQueryBuilder<T = any> implements PromiseLike<{ data: T | null; 
         return { data: insertedItems[0] || null, error: null };
       }
       return { data: Array.isArray(this.insertPayload) ? insertedItems : insertedItems[0], error: null };
+    }
+
+    if (this.action === "upsert") {
+      const itemsToUpsert = Array.isArray(this.insertPayload)
+        ? this.insertPayload
+        : [this.insertPayload];
+
+      const upsertedItems = itemsToUpsert.map((item) => {
+        const id = item.id !== undefined ? item.id : (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `mock-${Date.now()}-${Math.random()}`);
+        const now = new Date().toISOString();
+        const existingIdx = tableData.findIndex((r) => String(r.id) === String(item.id));
+        
+        let fullItem: any;
+        if (existingIdx >= 0) {
+          fullItem = {
+            ...tableData[existingIdx],
+            ...item,
+            updated_at: now,
+          };
+          tableData[existingIdx] = fullItem;
+        } else {
+          fullItem = {
+            ...item,
+            id,
+            created_at: item.created_at || now,
+            updated_at: item.updated_at || now,
+          };
+          tableData.push(fullItem);
+        }
+        return fullItem;
+      });
+
+      if (this.isSingle || !Array.isArray(this.insertPayload)) {
+        return { data: upsertedItems[0] || null, error: null };
+      }
+      return { data: upsertedItems, error: null };
     }
 
     if (this.action === "update") {

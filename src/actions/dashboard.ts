@@ -84,22 +84,26 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
       }
     }
 
-    // Compute room occupancy
+    // Compute room occupancy based on actual active tenants
     const totalRooms = rooms.length;
-    const rentedRooms = rooms.filter((r) => r.status === "rented").length;
-    const emptyRooms = rooms.filter((r) => r.status === "empty").length;
+    const rentedRooms = rooms.filter((r) => {
+      const roomTenants = allTenants.filter((t) => t.room_id === r.id);
+      return roomTenants.length > 0 || r.status === "rented";
+    }).length;
+    const emptyRooms = Math.max(0, totalRooms - rentedRooms);
     const occupancyRate = totalRooms > 0 ? Math.round((rentedRooms / totalRooms) * 100) : 0;
 
     // Build room cards with billing badge
     const roomCards: DashboardRoomCard[] = rooms.map((room) => {
       const roomTenants = allTenants.filter((t) => t.room_id === room.id);
+      const isRoomOccupied = roomTenants.length > 0;
       const lead = roomTenants.find((t) => t.is_lead) || roomTenants[0] || null;
       const invoice = invoices.find((inv) => inv.room_id === room.id) || null;
 
       let billingStatus: "paid" | "pending" | "empty" = "empty";
       let billingBadgeLabel: "Đã thu" | "Chưa thu" | "Trống" = "Trống";
 
-      if (room.status === "empty" || roomTenants.length === 0) {
+      if (!isRoomOccupied) {
         billingStatus = "empty";
         billingBadgeLabel = "Trống";
       } else if (invoice) {
@@ -111,7 +115,7 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
           billingBadgeLabel = "Chưa thu";
         }
       } else {
-        // Room is rented, but no invoice billed yet this month
+        // Room is rented / occupied, but no invoice billed yet this month
         billingStatus = "pending";
         billingBadgeLabel = "Chưa thu";
       }
@@ -120,7 +124,7 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
         id: room.id,
         code: room.code,
         base_price: room.base_price,
-        status: room.status,
+        status: isRoomOccupied ? "rented" : "empty",
         activeTenantsCount: roomTenants.length,
         leadTenantName: lead ? lead.name : null,
         leadTenantPhone: lead ? lead.phone : null,
