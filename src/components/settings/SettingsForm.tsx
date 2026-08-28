@@ -207,7 +207,7 @@ export function SettingsForm() {
         {/* Service Name / Description */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Tên / Mô tả khoản phí khác (Mục số 4 trên bảng biên lai)
+            Mô tả khoản phí dịch vụ chung (Mục số 4 trên bảng biên lai)
           </label>
           <Input
             value={serviceDescription}

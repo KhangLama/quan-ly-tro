@@ -479,7 +479,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
           <div className="flex items-center justify-between text-slate-600">
             <span className="flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5 text-emerald-500" />
-              Phí dịch vụ chung (Wifi, Rác, Vệ sinh):
+              {formData?.settings?.service_description || "Phí dịch vụ chung"}:
             </span>
             <span className="font-semibold text-slate-900">
               {formatVND(calculation.servicePrice)}đ

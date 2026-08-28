@@ -331,7 +331,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
 
                 {/* 4. Service */}
                 <tr>
-                  <td className="border-r border-black p-1.5 font-medium">4- Phí khác</td>
+                  <td className="border-r border-black p-1.5 font-medium">4- Tiền dịch vụ</td>
                   <td className="border-r border-black p-1.5 text-[11px] text-slate-600">
                     {data.serviceDescription || "Dịch vụ chung (Rác, Wifi, ...)"}
                   </td>
