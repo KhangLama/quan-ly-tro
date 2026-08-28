@@ -166,7 +166,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
             {/* Address Box */}
             <div className="grid grid-cols-12 border-x-2 border-b-2 border-black min-h-[50px]">
               <div className="col-span-5 p-2 border-r-2 border-black font-bold">
-                <div>Địa chỉ / Address:</div>
+                <div>Địa chỉ:</div>
                 <div className="font-normal text-xs mt-0.5 text-slate-800">
                   {address}
                 </div>
@@ -186,13 +186,13 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
             <div className="border-x-2 border-b-2 border-black">
               <div className="grid grid-cols-12 border-b border-black">
                 <div className="col-span-4 p-1.5 border-r border-black flex items-center gap-2">
-                  <span className="font-bold text-rose-600">Phòng/No.</span>
+                  <span className="font-bold text-rose-600">Phòng:</span>
                   <span className="bg-slate-100 px-3 py-0.5 rounded-full font-extrabold text-slate-900 border border-slate-300">
                     {data.roomCode}
                   </span>
                 </div>
                 <div className="col-span-8 p-1.5 flex items-center gap-2">
-                  <span className="font-bold">Khách hàng / Customer:</span>
+                  <span className="font-bold">Khách hàng:</span>
                   <span className="font-semibold text-slate-800">{customerName}</span>
                 </div>
               </div>
@@ -210,11 +210,11 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
             <table className="w-full border-collapse border-x-2 border-b-2 border-black text-left text-xs mt-0">
               <thead>
                 <tr className="border-b-2 border-black bg-slate-50 font-bold text-center">
-                  <th className="border-r border-black p-1.5 w-[22%]">Nội dung / Content</th>
-                  <th className="border-r border-black p-1.5 w-[26%]">Mô tả / Description</th>
-                  <th className="border-r border-black p-1.5 w-[17%]">Đơn giá / Rate</th>
-                  <th className="border-r border-black p-1.5 w-[13%]">Số lượng / Qty</th>
-                  <th className="p-1.5 w-[22%] text-right pr-2">Thành tiền / Amount</th>
+                  <th className="border-r border-black p-1.5 w-[22%]">Nội dung</th>
+                  <th className="border-r border-black p-1.5 w-[26%]">Mô tả</th>
+                  <th className="border-r border-black p-1.5 w-[17%]">Đơn giá</th>
+                  <th className="border-r border-black p-1.5 w-[13%]">Số lượng</th>
+                  <th className="p-1.5 w-[22%] text-right pr-2">Thành tiền</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black">
@@ -265,7 +265,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                 {/* TOTAL ROW */}
                 <tr className="border-t-2 border-black font-extrabold text-[13px]">
                   <td colSpan={4} className="border-r border-black p-2 text-center uppercase tracking-wider bg-white">
-                    Tổng cộng / Total
+                    Tổng cộng
                   </td>
                   <td className="p-2 text-right text-base font-black text-rose-700 bg-[#FFF2CC] pr-2 whitespace-nowrap">
                     {formatVND(data.totalAmount)} đ
