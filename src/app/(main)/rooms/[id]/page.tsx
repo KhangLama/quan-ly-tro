@@ -88,7 +88,7 @@ export default function RoomDetailPage() {
     );
   }
 
-  const { room, activeTenants, movedOutTenants, invoices } = data;
+  const { room, activeTenants, movedOutTenants, leadTenant, invoices } = data;
   const isRented = room.status === "rented";
 
   return (
@@ -217,7 +217,12 @@ export default function RoomDetailPage() {
           </h2>
         </div>
 
-        <InvoiceHistory invoices={invoices} roomCode={room.code} />
+        <InvoiceHistory
+          invoices={invoices}
+          roomCode={room.code}
+          customerName={leadTenant?.name || undefined}
+          customerPhone={leadTenant?.phone || undefined}
+        />
       </div>
 
       {/* Add Tenant Modal */}

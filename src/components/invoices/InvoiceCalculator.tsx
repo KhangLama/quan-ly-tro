@@ -217,6 +217,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       roomCode: selectedRoom.code,
       month,
       customerName: formData?.leadTenant?.name || undefined,
+      customerPhone: formData?.leadTenant?.phone || undefined,
       bankInfo: formData?.settings?.bank_info || undefined,
       address: formData?.settings?.address || undefined,
       serviceDescription: formData?.settings?.service_description || undefined,

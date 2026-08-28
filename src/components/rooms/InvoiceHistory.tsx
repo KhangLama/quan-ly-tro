@@ -13,9 +13,11 @@ import type { Invoice } from "@/types";
 interface InvoiceHistoryProps {
   invoices: Invoice[];
   roomCode: string;
+  customerName?: string;
+  customerPhone?: string;
 }
 
-export function InvoiceHistory({ invoices, roomCode }: InvoiceHistoryProps) {
+export function InvoiceHistory({ invoices, roomCode, customerName, customerPhone }: InvoiceHistoryProps) {
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
 
   if (invoices.length === 0) {
@@ -35,7 +37,8 @@ export function InvoiceHistory({ invoices, roomCode }: InvoiceHistoryProps) {
     setSelectedReceipt({
       roomCode,
       month: inv.month,
-      address: "325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ",
+      customerName,
+      customerPhone,
       oldElectric: Number(inv.old_electric),
       newElectric: Number(inv.new_electric),
       electricPrice: Number(inv.electric_price),
