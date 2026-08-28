@@ -1,12 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Zap,
   Droplet,
-  Home,
-  Shield,
-  Copy,
   Check,
   CheckCircle2,
   AlertCircle,
@@ -14,10 +11,9 @@ import {
   RefreshCw,
   Building2,
   Calendar,
-  DollarSign,
   Share2,
-  ImageIcon,
-  FileText,
+  Download,
+  Image as ImageIcon,
   Sparkles,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -25,7 +21,6 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { calculateInvoice } from "@/lib/calculations/invoice";
-import { buildZaloMessage } from "@/lib/zalo/template";
 import { formatVND } from "@/lib/utils";
 import {
   getInvoiceFormData,
@@ -33,14 +28,16 @@ import {
   toggleInvoiceStatus,
   type InvoiceFormDataResult,
 } from "@/actions/invoices";
-import { ReceiptModal, type ReceiptData } from "./ReceiptModal";
-import type { Invoice, Room, Setting } from "@/types";
+import { ReceiptCanvas, type ReceiptData } from "./ReceiptCanvas";
+import { toPng, toBlob } from "html-to-image";
+import type { Invoice } from "@/types";
 
 interface InvoiceCalculatorProps {
   initialRoomId?: string;
 }
 
 export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
+  const receiptRef = useRef<HTMLDivElement>(null);
   const [month, setMonth] = useState<string>(
     new Date().toISOString().substring(0, 7)
   );
@@ -60,13 +57,14 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
   const [servicePrice, setServicePrice] = useState<number>(100000);
   const [basePrice, setBasePrice] = useState<number>(2500000);
 
-  // Saving state & feedback
+  // Action states & feedback
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [shared, setShared] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [copiedImage, setCopiedImage] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [savedInvoice, setSavedInvoice] = useState<Invoice | null>(null);
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   // Load initial form data when room or month changes
   const loadData = useCallback(async (targetRoomId?: string, targetMonth?: string) => {
@@ -180,44 +178,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     }
   };
 
-  // Handle Share (Web Share API for all platforms, with clipboard fallback)
-  const handleShare = async () => {
-    const selectedRoom = formData?.rooms.find((r) => r.id === roomId);
-    const roomCode = selectedRoom ? selectedRoom.code : "Mới";
-
-    const text = buildZaloMessage({
-      roomCode,
-      month,
-      totalAmount: calculation.totalAmount,
-      electricUsage: calculation.electricUsage,
-      electricCost: calculation.electricCost,
-      waterUsage: calculation.waterUsage,
-      waterCost: calculation.waterCost,
-      serviceCost: calculation.servicePrice,
-    });
-
-    try {
-      if (typeof navigator !== "undefined" && navigator.share) {
-        await navigator.share({
-          title: `Tiền phòng ${roomCode} - Tháng ${month}`,
-          text,
-        });
-      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
-        setShared(true);
-        setTimeout(() => setShared(false), 3000);
-      }
-    } catch (err: any) {
-      if (err?.name !== "AbortError") {
-        if (typeof navigator !== "undefined" && navigator.clipboard) {
-          await navigator.clipboard.writeText(text);
-          setShared(true);
-          setTimeout(() => setShared(false), 3000);
-        }
-      }
-    }
-  };
-
+  // Build live receipt data
   const selectedRoom = formData?.rooms.find((r) => r.id === roomId);
 
   const receiptData: ReceiptData | null = useMemo(() => {
@@ -258,129 +219,231 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     calculation,
   ]);
 
+  // Handle Share: Share ONLY the image file
+  const handleShareImage = async () => {
+    if (!receiptRef.current || !selectedRoom) return;
+    try {
+      setSharing(true);
+      const blob = await toBlob(receiptRef.current, {
+        quality: 0.98,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+      });
+      if (!blob) throw new Error("Could not generate receipt image blob");
+
+      const file = new File(
+        [blob],
+        `Phieu_Tien_Phong_${selectedRoom.code}_${month}.png`,
+        { type: "image/png" }
+      );
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file], // Only share the PNG image file, no text attached
+        });
+      } else {
+        // Fallback for desktop: copy image to clipboard
+        await handleCopyImage();
+        if (formData?.leadTenant?.phone) {
+          const cleanPhone = formData.leadTenant.phone.replace(/\D/g, "");
+          window.open(`https://zalo.me/${cleanPhone}`, "_blank");
+        } else {
+          alert("Đã sao chép ảnh biên lai vào bộ nhớ tạm! Bạn chỉ cần dán (Ctrl+V) vào khung chat người nhận.");
+        }
+      }
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        console.error("Share failed", err);
+      }
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  // Handle Download Image
+  const handleDownloadImage = async () => {
+    if (!receiptRef.current || !selectedRoom) return;
+    try {
+      setDownloading(true);
+      const dataUrl = await toPng(receiptRef.current, {
+        quality: 0.98,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+      });
+      const link = document.createElement("a");
+      link.download = `Phieu_Tien_Phong_${selectedRoom.code}_${month}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error("Failed to generate image", err);
+      alert("Không thể tạo ảnh biên lai. Vui lòng thử lại!");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Handle Copy Image
+  const handleCopyImage = async () => {
+    if (!receiptRef.current) return;
+    try {
+      setDownloading(true);
+      const blob = await toBlob(receiptRef.current, {
+        quality: 0.98,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+      });
+      if (blob && navigator.clipboard && (window as any).ClipboardItem) {
+        await navigator.clipboard.write([
+          new (window as any).ClipboardItem({ "image/png": blob }),
+        ]);
+        setCopiedImage(true);
+        setTimeout(() => setCopiedImage(false), 2500);
+      } else {
+        handleDownloadImage();
+      }
+    } catch (err) {
+      console.error("Failed to copy image", err);
+      handleDownloadImage();
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (loading && !formData) {
+    return (
+      <div className="p-8 text-center text-xs text-slate-400">
+        Đang tải dữ liệu phòng và đơn giá...
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      {/* Alert feedback */}
+    <div className="space-y-4 max-w-lg mx-auto pb-10">
+      {/* Notifications */}
       {errorMsg && (
-        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-2xl flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {saveSuccess && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-          <span>Hóa đơn tháng {month} đã được lưu thành công vào cơ sở dữ liệu!</span>
+        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>Hóa đơn phòng {selectedRoom?.code} đã được lưu thành công!</span>
         </div>
       )}
 
-      {/* Room & Month Selector Card */}
+      {/* Invoice Status Banner if already exists */}
+      {savedInvoice && (
+        <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-indigo-900">
+              Trạng thái:
+            </span>
+            <Badge variant={savedInvoice.status === "paid" ? "success" : "warning"}>
+              {savedInvoice.status === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+            </Badge>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleToggleStatus}
+            className="text-[11px] h-7 bg-white whitespace-nowrap"
+          >
+            Đánh dấu {savedInvoice.status === "paid" ? "Chưa thu" : "Đã thu"}
+          </Button>
+        </div>
+      )}
+
+      {/* Card 1: Room & Month Selection */}
       <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Room Selection */}
+        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+          <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+          <span>Chọn phòng và tháng chốt</span>
+        </h2>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Room Selector */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Chọn phòng</span>
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+              Phòng
             </label>
             <select
               value={roomId}
               onChange={(e) => handleRoomSelect(e.target.value)}
-              className="w-full h-11 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             >
-              {formData?.rooms.map((r) => (
-                <option key={r.id} value={r.id}>
-                  Phòng {r.code} ({formatVND(r.base_price)}đ/tháng) {r.status === "empty" ? "— [Trống]" : ""}
+              {formData?.rooms.map((room) => (
+                <option key={room.id} value={room.id}>
+                  {room.code} ({room.status === "rented" ? "Đang thuê" : "Trống"})
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Month Selection */}
+          {/* Month Selector */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Tháng tính tiền</span>
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1 flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-slate-400" />
+              Tháng
             </label>
             <Input
               type="month"
               value={month}
-              onChange={(e) => {
-                if (e.target.value) setMonth(e.target.value);
-              }}
-              className="font-bold text-sm h-11"
+              onChange={(e) => setMonth(e.target.value)}
+              className="text-xs font-bold"
             />
           </div>
         </div>
 
-        {/* Existing invoice status indicator */}
-        {savedInvoice && (
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs text-slate-500">
-              Trạng thái hóa đơn:
+        {/* Lead Tenant Badge */}
+        {formData?.leadTenant ? (
+          <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl flex items-center justify-between border border-slate-100">
+            <span>
+              Người đại diện: <strong>{formData.leadTenant.name}</strong>
             </span>
-            <div className="flex items-center gap-2">
-              <Badge variant={savedInvoice.status === "paid" ? "success" : "warning"}>
-                {savedInvoice.status === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
-              </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleToggleStatus}
-                className="text-[11px] h-7 px-2"
-              >
-                {savedInvoice.status === "paid" ? "Đổi sang Chưa thu" : "Đánh dấu Đã thu"}
-              </Button>
-            </div>
+            {formData.leadTenant.phone && (
+              <span className="text-slate-400 text-[11px]">
+                {formData.leadTenant.phone}
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-xl">
+            ⚠️ Phòng chưa có khách đại diện (đang trống)
           </div>
         )}
       </Card>
 
-      {/* Electricity Section */}
+      {/* Card 2: Electricity Meters */}
       <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-amber-500/10 text-amber-600 rounded-lg">
-              <Zap className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Tiền điện</h3>
-              <p className="text-[11px] text-slate-500">
-                Đơn giá: {formatVND(electricPrice)}đ/số (kWh)
-              </p>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <span className="text-xs text-slate-500">Sử dụng:</span>
-            <span className="text-sm font-bold text-amber-600 ml-1">
-              {calculation.electricUsage} số
-            </span>
-          </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-amber-500" />
+            <span>Chỉ số Điện (kWh)</span>
+          </h2>
+          <span className="text-[11px] font-medium text-slate-400">
+            Đơn giá: {formatVND(electricPrice)}đ/kWh
+          </span>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              Chỉ số cũ {formData?.previousReading.hasPreviousInvoice && (
-                <span className="text-[10px] text-indigo-600 font-normal">
-                  (tháng {formData.previousReading.previousMonth})
-                </span>
-              )}
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+              Số cũ (tháng trước)
             </label>
             <Input
               type="number"
               value={oldElectric}
               onChange={(e) => setOldElectric(e.target.value)}
-              min="0"
-              className="font-mono text-sm"
+              className="font-mono text-sm font-semibold bg-slate-50 text-slate-600"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              Chỉ số mới <span className="text-rose-500">*</span>
+            <label className="block text-[11px] font-semibold text-amber-700 mb-1">
+              Số mới (hiện tại)
             </label>
             <Input
               type="number"
@@ -393,55 +456,39 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
         </div>
 
         <div className="bg-slate-50 p-2.5 rounded-xl flex items-center justify-between text-xs text-slate-600">
-          <span>{calculation.electricUsage} số × {formatVND(electricPrice)}đ</span>
+          <span>{calculation.electricUsage} kWh × {formatVND(electricPrice)}đ</span>
           <strong className="text-slate-900 font-bold">{formatVND(calculation.electricCost)}đ</strong>
         </div>
       </Card>
 
-      {/* Water Section */}
+      {/* Card 3: Water Meters */}
       <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-sky-500/10 text-sky-600 rounded-lg">
-              <Droplet className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Tiền nước</h3>
-              <p className="text-[11px] text-slate-500">
-                Đơn giá: {formatVND(waterPrice)}đ/khối (m³)
-              </p>
-            </div>
-          </div>
-
-          <div className="text-right">
-            <span className="text-xs text-slate-500">Sử dụng:</span>
-            <span className="text-sm font-bold text-sky-600 ml-1">
-              {calculation.waterUsage} m³
-            </span>
-          </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Droplet className="w-3.5 h-3.5 text-sky-500" />
+            <span>Chỉ số Nước (m³)</span>
+          </h2>
+          <span className="text-[11px] font-medium text-slate-400">
+            Đơn giá: {formatVND(waterPrice)}đ/m³
+          </span>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              Chỉ số cũ {formData?.previousReading.hasPreviousInvoice && (
-                <span className="text-[10px] text-indigo-600 font-normal">
-                  (tháng {formData.previousReading.previousMonth})
-                </span>
-              )}
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+              Số cũ (tháng trước)
             </label>
             <Input
               type="number"
               value={oldWater}
               onChange={(e) => setOldWater(e.target.value)}
-              min="0"
-              className="font-mono text-sm"
+              className="font-mono text-sm font-semibold bg-slate-50 text-slate-600"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              Chỉ số mới <span className="text-rose-500">*</span>
+            <label className="block text-[11px] font-semibold text-sky-700 mb-1">
+              Số mới (hiện tại)
             </label>
             <Input
               type="number"
@@ -459,124 +506,105 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
         </div>
       </Card>
 
-      {/* Room Rent & Services Breakdown */}
-      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-2.5">
-        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-          Phí cố định hàng tháng
-        </h3>
-
-        <div className="space-y-2 text-xs">
-          <div className="flex items-center justify-between text-slate-600">
-            <span className="flex items-center gap-1.5">
-              <Home className="w-3.5 h-3.5 text-indigo-500" />
-              Tiền phòng {selectedRoom ? `(${selectedRoom.code})` : ""}:
-            </span>
-            <span className="font-semibold text-slate-900">
-              {formatVND(calculation.basePrice)}đ
-            </span>
+      {/* SECTION: LIVE RECEIPT & ACTIONS */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+              Phiếu báo tiền phòng (Biên lai)
+            </h2>
           </div>
-
-          <div className="flex items-center justify-between text-slate-600">
-            <span className="flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5 text-emerald-500" />
-              {formData?.settings?.service_description || "Phí dịch vụ chung"}:
-            </span>
-            <span className="font-semibold text-slate-900">
-              {formatVND(calculation.servicePrice)}đ
-            </span>
-          </div>
+          <span className="text-[11px] font-bold text-indigo-600">
+            Tổng: {formatVND(calculation.totalAmount)}đ
+          </span>
         </div>
-      </Card>
 
-      {/* Grand Total Summary Card */}
-      <Card className="p-5 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl shadow-lg space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">
-              Tổng cộng thanh toán
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1">
-              {formatVND(calculation.totalAmount)}
-              <span className="text-sm font-medium text-indigo-200 ml-1">VNĐ</span>
+        {/* Live Receipt Canvas */}
+        <div className="overflow-x-auto p-1 max-h-[65vh] overflow-y-auto rounded-2xl border border-slate-200/90 bg-slate-100 shadow-inner">
+          {receiptData ? (
+            <ReceiptCanvas ref={receiptRef} data={receiptData} />
+          ) : (
+            <div className="p-8 text-center text-xs text-slate-400">
+              Vui lòng chọn phòng để hiển thị biên lai
             </div>
-          </div>
-
-          <Badge variant="info" className="bg-indigo-500/20 text-indigo-200 border-indigo-500/30">
-            Tháng {month}
-          </Badge>
+          )}
         </div>
 
-        {/* Breakdown pills */}
-        <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300 pt-2 border-t border-white/10">
-          <div>• Tiền phòng: {formatVND(calculation.basePrice)}đ</div>
-          <div>• Tiền điện: {formatVND(calculation.electricCost)}đ</div>
-          <div>• Tiền nước: {formatVND(calculation.waterCost)}đ</div>
-          <div>• Tiền DV: {formatVND(calculation.servicePrice)}đ</div>
-        </div>
-
-        {/* Bank info display */}
-        {formData?.settings?.bank_info && (
-          <div className="p-2.5 bg-white/10 rounded-xl text-xs text-slate-200">
-            <span className="font-semibold text-amber-300 block text-[11px] mb-0.5">
-              Tài khoản nhận tiền:
-            </span>
-            <span className="font-mono text-xs">{formData.settings.bank_info}</span>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="space-y-2.5 pt-2">
-          {/* View & Download Receipt Image Button */}
+        {/* Action Buttons Panel */}
+        <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+          {/* Primary Share Button (Pure image share) */}
           <Button
             type="button"
-            onClick={() => setShowReceiptModal(true)}
-            className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs h-11 gap-1.5 shadow-md shadow-amber-500/20 whitespace-nowrap"
+            onClick={handleShareImage}
+            isLoading={sharing}
+            className="w-full bg-[#0068FF] hover:bg-[#0055d4] text-white font-extrabold text-xs gap-2 h-11 shadow-sm shadow-blue-500/20 whitespace-nowrap"
           >
-            <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950 shrink-0" />
-            <span>Xem & Tải ảnh phiếu báo tiền phòng</span>
+            <Share2 className="w-4 h-4 shrink-0" />
+            <span>Share</span>
           </Button>
 
-          <div className="grid grid-cols-2 gap-2.5">
-            {/* Share Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleShare}
-              className="w-full bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5 text-xs h-11 whitespace-nowrap"
-            >
-              {shared ? (
-                <>
-                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span className="text-emerald-300 font-bold">Đã sao chép!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-4 h-4 text-sky-400 shrink-0" />
-                  <span>Share</span>
-                </>
-              )}
-            </Button>
-
-            {/* Save Invoice Button */}
+          <div className="grid grid-cols-3 gap-2">
+            {/* Save Button */}
             <Button
               type="button"
               onClick={() => handleSave("pending")}
               isLoading={saving}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5 text-xs font-bold h-11 shadow-md shadow-indigo-500/30"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-1.5 h-10 shadow-sm whitespace-nowrap"
             >
-              <Save className="w-4 h-4" />
-              <span>Lưu hóa đơn</span>
+              <Save className="w-4 h-4 shrink-0" />
+              <span>Lưu</span>
+            </Button>
+
+            {/* Download Button */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDownloadImage}
+              isLoading={downloading}
+              className="w-full font-bold text-xs gap-1.5 h-10 text-slate-700 border-slate-300 hover:bg-white whitespace-nowrap"
+            >
+              <Download className="w-4 h-4 shrink-0 text-slate-600" />
+              <span>Tải ảnh</span>
+            </Button>
+
+            {/* Copy Image Button */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCopyImage}
+              disabled={downloading || sharing}
+              className="w-full font-bold text-xs gap-1.5 h-10 text-slate-700 border-slate-300 hover:bg-white whitespace-nowrap"
+            >
+              {copiedImage ? (
+                <>
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="text-emerald-700">Đã copy!</span>
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span>Copy</span>
+                </>
+              )}
             </Button>
           </div>
-        </div>
-      </Card>
 
-      {/* Receipt Modal for previewing and downloading image */}
-      <ReceiptModal
-        isOpen={showReceiptModal}
-        onClose={() => setShowReceiptModal(false)}
-        data={receiptData}
-      />
+          {/* Quick Zalo Direct Chat Link */}
+          {formData?.leadTenant?.phone && (
+            <div className="pt-1 text-center">
+              <a
+                href={`https://zalo.me/${formData.leadTenant.phone.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-[#0068FF] hover:underline font-semibold"
+              >
+                <span>💬 Mở khung chat Zalo với {formData.leadTenant.name} ({formData.leadTenant.phone})</span>
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
