@@ -169,7 +169,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
             <div className="grid grid-cols-12 border-x-2 border-b-2 border-black min-h-[50px]">
               <div className="col-span-5 p-2 border-r-2 border-black font-bold">
                 <div>Địa chỉ:</div>
-                <div className="font-normal text-xs mt-0.5 text-slate-800">
+                <div className="font-normal text-xs mt-0.5 text-slate-800 whitespace-pre-line">
                   {address}
                 </div>
               </div>
@@ -277,9 +277,9 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                 {/* NOTE ROW */}
                 <tr>
                   <td className="border-r border-black p-2 font-bold italic">Ghi chú:</td>
-                  <td colSpan={4} className="p-2 text-xs text-slate-700 font-medium">
+                  <td colSpan={4} className="p-2 text-xs text-slate-700 font-medium whitespace-pre-line leading-relaxed">
                     {data.receiptNote ? (
-                      <div>{data.receiptNote}</div>
+                      <div className="whitespace-pre-line">{data.receiptNote}</div>
                     ) : data.bankInfo ? (
                       <div>
                         Thanh toán STK: <strong>{data.bankInfo}</strong> (Cú pháp: P{data.roomCode} TT thang {data.month})
