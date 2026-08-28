@@ -3,7 +3,7 @@
 async function safeRevalidatePath(path: string) {
   try {
     const { revalidatePath } = await import("next/cache");
-    safeRevalidatePath(path);
+    revalidatePath(path);
   } catch {}
 }
 
@@ -43,18 +43,11 @@ export async function getInvoiceFormData(
     const month = targetMonth || new Date().toISOString().substring(0, 7);
     const supabase = await createClient();
 
-    // 1. Fetch settings
-    const { data: settingsData } = await supabase
-      .from("settings")
-      .select("*")
-      .eq("id", 1)
-      .single();
-
-    // 2. Fetch all rooms
-    const { data: roomsData } = await supabase
-      .from("rooms")
-      .select("*")
-      .order("code", { ascending: true });
+    // 1. Fetch settings and rooms in parallel
+    const [{ data: settingsData }, { data: roomsData }] = await Promise.all([
+      supabase.from("settings").select("*").eq("id", 1).single(),
+      supabase.from("rooms").select("*").order("code", { ascending: true }),
+    ]);
 
     const rooms: Room[] = roomsData || [];
     const selectedRoom = rooms.find((r) => r.id === roomId) || rooms[0] || null;
@@ -69,12 +62,20 @@ export async function getInvoiceFormData(
       };
     }
 
-    // 3. Fetch invoices for the selected room
-    const { data: invoicesData } = await supabase
-      .from("invoices")
-      .select("*")
-      .eq("room_id", selectedRoom.id)
-      .order("month", { ascending: false });
+    // 2. Fetch invoices and lead tenant for the selected room in parallel
+    const [{ data: invoicesData }, { data: tenantsData }] = await Promise.all([
+      supabase
+        .from("invoices")
+        .select("*")
+        .eq("room_id", selectedRoom.id)
+        .order("month", { ascending: false }),
+      supabase
+        .from("tenants")
+        .select("id, name, phone, is_lead")
+        .eq("room_id", selectedRoom.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: true }),
+    ]);
 
     const roomInvoices: Invoice[] = invoicesData || [];
 
@@ -90,14 +91,6 @@ export async function getInvoiceFormData(
 
     const old_electric = latestPrior ? Number(latestPrior.new_electric) : 0;
     const old_water = latestPrior ? Number(latestPrior.new_water) : 0;
-
-    // 4. Fetch lead tenant for this room
-    const { data: tenantsData } = await supabase
-      .from("tenants")
-      .select("id, name, phone, is_lead")
-      .eq("room_id", selectedRoom.id)
-      .eq("status", "active")
-      .order("created_at", { ascending: true });
 
     const activeTenants = tenantsData || [];
     const leadTenant = activeTenants.find((t: any) => t.is_lead) || activeTenants[0] || null;

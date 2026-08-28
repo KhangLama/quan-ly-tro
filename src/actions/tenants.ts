@@ -3,7 +3,7 @@
 async function safeRevalidatePath(path: string) {
   try {
     const { revalidatePath } = await import("next/cache");
-    safeRevalidatePath(path);
+    revalidatePath(path);
   } catch {}
 }
 

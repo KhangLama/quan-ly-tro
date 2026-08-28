@@ -27,11 +27,20 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
     const currentMonth = month || new Date().toISOString().substring(0, 7);
     const supabase = await createClient();
 
-    // Fetch all rooms
-    const { data: roomsData, error: roomsError } = await supabase
-      .from("rooms")
-      .select("*")
-      .order("code", { ascending: true });
+    // Fetch rooms, active tenants, and invoices in parallel for maximum speed
+    const [
+      { data: roomsData, error: roomsError },
+      { data: tenantsData },
+      { data: invoicesData },
+    ] = await Promise.all([
+      supabase.from("rooms").select("*").order("code", { ascending: true }),
+      supabase
+        .from("tenants")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: true }),
+      supabase.from("invoices").select("*").eq("month", currentMonth),
+    ]);
 
     if (roomsError) {
       return {
@@ -51,22 +60,7 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
     }
 
     const rooms: Room[] = roomsData || [];
-
-    // Fetch all active tenants
-    const { data: tenantsData } = await supabase
-      .from("tenants")
-      .select("*")
-      .eq("status", "active")
-      .order("created_at", { ascending: true });
-
     const allTenants: Tenant[] = tenantsData || [];
-
-    // Fetch all invoices for the selected month
-    const { data: invoicesData } = await supabase
-      .from("invoices")
-      .select("*")
-      .eq("month", currentMonth);
-
     const invoices: Invoice[] = invoicesData || [];
 
     // Compute financial KPIs

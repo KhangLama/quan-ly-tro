@@ -3,7 +3,7 @@
 async function safeRevalidatePath(path: string) {
   try {
     const { revalidatePath } = await import("next/cache");
-    safeRevalidatePath(path);
+    revalidatePath(path);
   } catch {}
 }
 
@@ -26,22 +26,15 @@ export async function getRooms(): Promise<{ rooms: RoomWithDetails[]; error?: st
   try {
     const supabase = await createClient();
     
-    // Fetch rooms ordered by code
-    const { data: rooms, error: roomsError } = await supabase
-      .from("rooms")
-      .select("*")
-      .order("code", { ascending: true });
+    // Fetch rooms and active tenants in parallel
+    const [{ data: rooms, error: roomsError }, { data: tenants }] = await Promise.all([
+      supabase.from("rooms").select("*").order("code", { ascending: true }),
+      supabase.from("tenants").select("*").eq("status", "active").order("created_at", { ascending: true }),
+    ]);
 
     if (roomsError) {
       return { rooms: [], error: roomsError.message };
     }
-
-    // Fetch all active tenants
-    const { data: tenants } = await supabase
-      .from("tenants")
-      .select("*")
-      .eq("status", "active")
-      .order("created_at", { ascending: true });
 
     const allTenants: Tenant[] = tenants || [];
 
@@ -68,11 +61,16 @@ export async function getRoomById(id: string): Promise<GetRoomDetailsResult> {
   try {
     const supabase = await createClient();
 
-    const { data: room, error: roomError } = await supabase
-      .from("rooms")
-      .select("*")
-      .eq("id", id)
-      .single();
+    // Fetch room, tenants, and invoices in parallel
+    const [
+      { data: room, error: roomError },
+      { data: tenants },
+      { data: invoices },
+    ] = await Promise.all([
+      supabase.from("rooms").select("*").eq("id", id).single(),
+      supabase.from("tenants").select("*").eq("room_id", id).order("created_at", { ascending: true }),
+      supabase.from("invoices").select("*").eq("room_id", id).order("month", { ascending: false }),
+    ]);
 
     if (roomError || !room) {
       return {
@@ -85,26 +83,12 @@ export async function getRoomById(id: string): Promise<GetRoomDetailsResult> {
       };
     }
 
-    // Fetch all tenants for this room
-    const { data: tenants } = await supabase
-      .from("tenants")
-      .select("*")
-      .eq("room_id", id)
-      .order("created_at", { ascending: true });
-
     const allTenants: Tenant[] = tenants || [];
     const activeTenants = allTenants.filter((t) => t.status === "active");
     const movedOutTenants = allTenants
       .filter((t) => t.status === "moved_out")
       .sort((a, b) => (b.end_date || "").localeCompare(a.end_date || ""));
     const leadTenant = activeTenants.find((t) => t.is_lead) || activeTenants[0] || null;
-
-    // Fetch all invoices for this room
-    const { data: invoices } = await supabase
-      .from("invoices")
-      .select("*")
-      .eq("room_id", id)
-      .order("month", { ascending: false });
 
     return {
       room,

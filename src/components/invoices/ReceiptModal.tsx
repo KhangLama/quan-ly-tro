@@ -211,10 +211,10 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
               <thead>
                 <tr className="border-b-2 border-black bg-slate-50 font-bold text-center">
                   <th className="border-r border-black p-1.5 w-[22%]">Nội dung / Content</th>
-                  <th className="border-r border-black p-1.5 w-[32%]">Mô tả / Description</th>
-                  <th className="border-r border-black p-1.5 w-[16%]">Đơn giá / Rate</th>
-                  <th className="border-r border-black p-1.5 w-[14%]">Số lượng / Qty</th>
-                  <th className="p-1.5 w-[16%] text-right pr-2">Thành tiền / Amount</th>
+                  <th className="border-r border-black p-1.5 w-[26%]">Mô tả / Description</th>
+                  <th className="border-r border-black p-1.5 w-[17%]">Đơn giá / Rate</th>
+                  <th className="border-r border-black p-1.5 w-[13%]">Số lượng / Qty</th>
+                  <th className="p-1.5 w-[22%] text-right pr-2">Thành tiền / Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black">
@@ -222,9 +222,9 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                 <tr>
                   <td className="border-r border-black p-1.5 font-medium">1- Tiền thuê</td>
                   <td className="border-r border-black p-1.5 text-slate-500 italic"></td>
-                  <td className="border-r border-black p-1.5 text-right font-medium">{formatVND(data.basePrice)} đ</td>
+                  <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">{formatVND(data.basePrice)} đ</td>
                   <td className="border-r border-black p-1.5 text-center">1</td>
-                  <td className="p-1.5 text-right font-bold pr-2">{formatVND(data.basePrice)} đ</td>
+                  <td className="p-1.5 text-right font-bold pr-2 whitespace-nowrap">{formatVND(data.basePrice)} đ</td>
                 </tr>
 
                 {/* 2. Electricity */}
@@ -234,9 +234,9 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                     <div>Chỉ số mới: <strong>{data.newElectric}</strong></div>
                     <div>Chỉ số cũ: <strong>{data.oldElectric}</strong></div>
                   </td>
-                  <td className="border-r border-black p-1.5 text-right font-medium">{formatVND(data.electricPrice)} đ</td>
+                  <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">{formatVND(data.electricPrice)} đ</td>
                   <td className="border-r border-black p-1.5 text-center font-bold text-amber-700">{data.electricUsage}</td>
-                  <td className="p-1.5 text-right font-bold pr-2">{formatVND(data.electricCost)} đ</td>
+                  <td className="p-1.5 text-right font-bold pr-2 whitespace-nowrap">{formatVND(data.electricCost)} đ</td>
                 </tr>
 
                 {/* 3. Water */}
@@ -246,9 +246,9 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                     <div>Chỉ số mới: <strong>{data.newWater}</strong></div>
                     <div>Chỉ số cũ: <strong>{data.oldWater}</strong></div>
                   </td>
-                  <td className="border-r border-black p-1.5 text-right font-medium">{formatVND(data.waterPrice)} đ</td>
+                  <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">{formatVND(data.waterPrice)} đ</td>
                   <td className="border-r border-black p-1.5 text-center font-bold text-sky-700">{data.waterUsage}</td>
-                  <td className="p-1.5 text-right font-bold pr-2">{formatVND(data.waterCost)} đ</td>
+                  <td className="p-1.5 text-right font-bold pr-2 whitespace-nowrap">{formatVND(data.waterCost)} đ</td>
                 </tr>
 
                 {/* 4. Service */}
@@ -257,9 +257,9 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                   <td className="border-r border-black p-1.5 text-[11px] text-slate-600">
                     Dịch vụ chung (Rác, Wifi, ...)
                   </td>
-                  <td className="border-r border-black p-1.5 text-right font-medium">{formatVND(data.servicePrice)} đ</td>
+                  <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">{formatVND(data.servicePrice)} đ</td>
                   <td className="border-r border-black p-1.5 text-center">1</td>
-                  <td className="p-1.5 text-right font-bold pr-2">{formatVND(data.servicePrice)} đ</td>
+                  <td className="p-1.5 text-right font-bold pr-2 whitespace-nowrap">{formatVND(data.servicePrice)} đ</td>
                 </tr>
 
                 {/* TOTAL ROW */}
@@ -267,7 +267,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                   <td colSpan={4} className="border-r border-black p-2 text-center uppercase tracking-wider bg-white">
                     Tổng cộng / Total
                   </td>
-                  <td className="p-2 text-right text-base text-rose-700 bg-[#FFF2CC] pr-2">
+                  <td className="p-2 text-right text-base font-black text-rose-700 bg-[#FFF2CC] pr-2 whitespace-nowrap">
                     {formatVND(data.totalAmount)} đ
                   </td>
                 </tr>
