@@ -90,6 +90,38 @@ class MockDatabase {
     invoices: [],
   };
 
+  constructor() {
+    this.loadFromFile();
+  }
+
+  private loadFromFile() {
+    if (typeof window === "undefined" && process.env.NODE_ENV !== "test") {
+      try {
+        const fs = require("fs");
+        const path = require("path");
+        const filePath = path.join(process.cwd(), ".mock-db.json");
+        if (fs.existsSync(filePath)) {
+          const raw = fs.readFileSync(filePath, "utf-8");
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.rooms)) {
+            this.state = parsed;
+          }
+        }
+      } catch {}
+    }
+  }
+
+  public saveToFile() {
+    if (typeof window === "undefined" && process.env.NODE_ENV !== "test") {
+      try {
+        const fs = require("fs");
+        const path = require("path");
+        const filePath = path.join(process.cwd(), ".mock-db.json");
+        fs.writeFileSync(filePath, JSON.stringify(this.state, null, 2), "utf-8");
+      } catch {}
+    }
+  }
+
   public reset(initialState?: Partial<MockDatabaseState>) {
     this.state = {
       settings: initialState?.settings
@@ -293,6 +325,7 @@ export class MockQueryBuilder<T = any> implements PromiseLike<{ data: T | null; 
         return fullItem;
       });
 
+      mockDbStore.saveToFile();
       if (this.isSingle || (!Array.isArray(this.insertPayload) && this.selectColumns !== "*")) {
         return { data: insertedItems[0] || null, error: null };
       }
@@ -329,6 +362,7 @@ export class MockQueryBuilder<T = any> implements PromiseLike<{ data: T | null; 
         return fullItem;
       });
 
+      mockDbStore.saveToFile();
       if (this.isSingle || !Array.isArray(this.insertPayload)) {
         return { data: upsertedItems[0] || null, error: null };
       }
@@ -347,6 +381,7 @@ export class MockQueryBuilder<T = any> implements PromiseLike<{ data: T | null; 
         updated.push({ ...item });
       }
 
+      mockDbStore.saveToFile();
       if (this.isSingle) {
         return { data: updated[0] || null, error: null };
       }
@@ -371,6 +406,7 @@ export class MockQueryBuilder<T = any> implements PromiseLike<{ data: T | null; 
         (mockDbStore.getState() as any)[this.tableName] = filtered;
       }
 
+      mockDbStore.saveToFile();
       return { data: matched, error: null };
     }
 
