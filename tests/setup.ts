@@ -1,3 +1,7 @@
+// Force mock DB and test mode before anything else loads
+process.env.NODE_ENV = "test";
+process.env.NEXT_PUBLIC_USE_MOCK_DB = "true";
+
 import { vi, afterEach, beforeEach } from "vitest";
 
 // Polyfill / Mock clipboard API

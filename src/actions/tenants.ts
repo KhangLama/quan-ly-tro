@@ -1,9 +1,9 @@
-async function revalidatePath(path: string) {
+"use server";
+
+async function safeRevalidatePath(path: string) {
   try {
-    const nextCache = await import("next/cache");
-    if (nextCache && typeof nextCache.revalidatePath === "function") {
-      nextCache.revalidatePath(path);
-    }
+    const { revalidatePath } = await import("next/cache");
+    safeRevalidatePath(path);
   } catch {}
 }
 
@@ -93,9 +93,9 @@ export async function addTenant(data: {
       .update({ status: "rented" })
       .eq("id", data.room_id);
 
-    revalidatePath("/");
-    revalidatePath("/rooms");
-    revalidatePath(`/rooms/${data.room_id}`);
+    safeRevalidatePath("/");
+    safeRevalidatePath("/rooms");
+    safeRevalidatePath(`/rooms/${data.room_id}`);
 
     return { success: true, tenant: newTenant };
   } catch (err: any) {
@@ -170,9 +170,9 @@ export async function markTenantMovedOut(
       }
     }
 
-    revalidatePath("/");
-    revalidatePath("/rooms");
-    revalidatePath(`/rooms/${tenant.room_id}`);
+    safeRevalidatePath("/");
+    safeRevalidatePath("/rooms");
+    safeRevalidatePath(`/rooms/${tenant.room_id}`);
 
     return { success: true, tenant: updatedTenant };
   } catch (err: any) {
@@ -230,9 +230,9 @@ export async function updateTenant(
       return { success: false, error: error.message };
     }
 
-    revalidatePath("/");
-    revalidatePath("/rooms");
-    revalidatePath(`/rooms/${currentTenant.room_id}`);
+    safeRevalidatePath("/");
+    safeRevalidatePath("/rooms");
+    safeRevalidatePath(`/rooms/${currentTenant.room_id}`);
 
     return { success: true, tenant: updated };
   } catch (err: any) {
@@ -270,9 +270,9 @@ export async function deleteTenant(tenantId: string): Promise<{ success: boolean
         await supabase.from("rooms").update({ status: "empty" }).eq("id", tenant.room_id);
       }
 
-      revalidatePath("/");
-      revalidatePath("/rooms");
-      revalidatePath(`/rooms/${tenant.room_id}`);
+      safeRevalidatePath("/");
+      safeRevalidatePath("/rooms");
+      safeRevalidatePath(`/rooms/${tenant.room_id}`);
     }
 
     return { success: true };

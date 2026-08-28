@@ -1,9 +1,9 @@
-async function revalidatePath(path: string) {
+"use server";
+
+async function safeRevalidatePath(path: string) {
   try {
-    const nextCache = await import("next/cache");
-    if (nextCache && typeof nextCache.revalidatePath === "function") {
-      nextCache.revalidatePath(path);
-    }
+    const { revalidatePath } = await import("next/cache");
+    safeRevalidatePath(path);
   } catch {}
 }
 
@@ -155,8 +155,8 @@ export async function createRoom(data: { code: string; base_price: number }): Pr
       return { error: error.message };
     }
 
-    revalidatePath("/");
-    revalidatePath("/rooms");
+    safeRevalidatePath("/");
+    safeRevalidatePath("/rooms");
     return { room: newRoom };
   } catch (err: any) {
     return { error: err.message || "Lỗi khi tạo phòng" };
@@ -180,9 +180,9 @@ export async function updateRoom(id: string, data: Partial<RoomUpdate>): Promise
       return { error: error.message };
     }
 
-    revalidatePath("/");
-    revalidatePath("/rooms");
-    revalidatePath(`/rooms/${id}`);
+    safeRevalidatePath("/");
+    safeRevalidatePath("/rooms");
+    safeRevalidatePath(`/rooms/${id}`);
     return { room: updated };
   } catch (err: any) {
     return { error: err.message || "Lỗi khi cập nhật phòng" };
@@ -201,8 +201,8 @@ export async function deleteRoom(id: string): Promise<{ success: boolean; error?
       return { success: false, error: error.message };
     }
 
-    revalidatePath("/");
-    revalidatePath("/rooms");
+    safeRevalidatePath("/");
+    safeRevalidatePath("/rooms");
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || "Lỗi khi xóa phòng" };

@@ -1,9 +1,9 @@
-async function revalidatePath(path: string) {
+"use server";
+
+async function safeRevalidatePath(path: string) {
   try {
-    const nextCache = await import("next/cache");
-    if (nextCache && typeof nextCache.revalidatePath === "function") {
-      nextCache.revalidatePath(path);
-    }
+    const { revalidatePath } = await import("next/cache");
+    safeRevalidatePath(path);
   } catch {}
 }
 
@@ -65,9 +65,9 @@ export async function updateSettings(data: {
 
     if (error) return { success: false, error: error.message };
 
-    revalidatePath("/settings");
-    revalidatePath("/invoices/new");
-    revalidatePath("/");
+    safeRevalidatePath("/settings");
+    safeRevalidatePath("/invoices/new");
+    safeRevalidatePath("/");
 
     return { success: true, settings: updated };
   } catch (err: any) {

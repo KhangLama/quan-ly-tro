@@ -1,9 +1,9 @@
-async function revalidatePath(path: string) {
+"use server";
+
+async function safeRevalidatePath(path: string) {
   try {
-    const nextCache = await import("next/cache");
-    if (nextCache && typeof nextCache.revalidatePath === "function") {
-      nextCache.revalidatePath(path);
-    }
+    const { revalidatePath } = await import("next/cache");
+    safeRevalidatePath(path);
   } catch {}
 }
 
@@ -221,10 +221,10 @@ export async function saveInvoice(data: {
       savedInvoice = inserted;
     }
 
-    revalidatePath("/");
-    revalidatePath("/rooms");
-    revalidatePath(`/rooms/${data.room_id}`);
-    revalidatePath("/invoices/new");
+    safeRevalidatePath("/");
+    safeRevalidatePath("/rooms");
+    safeRevalidatePath(`/rooms/${data.room_id}`);
+    safeRevalidatePath("/invoices/new");
 
     return { success: true, invoice: savedInvoice ?? undefined };
   } catch (err: any) {
@@ -266,9 +266,9 @@ export async function toggleInvoiceStatus(invoiceId: string): Promise<SaveInvoic
       return { success: false, error: error.message };
     }
 
-    revalidatePath("/");
-    revalidatePath("/rooms");
-    revalidatePath(`/rooms/${invoice.room_id}`);
+    safeRevalidatePath("/");
+    safeRevalidatePath("/rooms");
+    safeRevalidatePath(`/rooms/${invoice.room_id}`);
 
     return { success: true, invoice: updated ?? undefined };
   } catch (err: any) {
@@ -285,8 +285,8 @@ export async function deleteInvoice(invoiceId: string): Promise<{ success: boole
     const { error } = await supabase.from("invoices").delete().eq("id", invoiceId);
     if (error) return { success: false, error: error.message };
 
-    revalidatePath("/");
-    revalidatePath("/rooms");
+    safeRevalidatePath("/");
+    safeRevalidatePath("/rooms");
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || "Lỗi khi xóa hóa đơn" };
