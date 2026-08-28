@@ -518,10 +518,10 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
           <Button
             type="button"
             onClick={() => setShowReceiptModal(true)}
-            className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs h-11 gap-2 shadow-md shadow-amber-500/20"
+            className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold text-xs h-11 gap-1.5 shadow-md shadow-amber-500/20 whitespace-nowrap"
           >
-            <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950" />
-            <span>Xem & Tải ảnh phiếu báo tiền phòng (Biên lai)</span>
+            <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950 shrink-0" />
+            <span>Xem & Tải ảnh phiếu báo tiền phòng</span>
           </Button>
 
           <div className="grid grid-cols-2 gap-2.5">

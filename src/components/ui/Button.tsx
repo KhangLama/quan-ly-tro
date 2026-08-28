@@ -31,7 +31,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-medium rounded-xl transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 select-none";
+      "inline-flex flex-row flex-nowrap items-center justify-center font-medium rounded-xl transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 select-none whitespace-nowrap";
 
     const variantStyles = {
       primary:
@@ -68,16 +68,16 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading ? (
-          <>
+          <span className="inline-flex flex-row flex-nowrap items-center justify-center gap-1.5 whitespace-nowrap">
             <Loader2 className="h-4 w-4 animate-spin shrink-0" />
             <span>{loadingText || children}</span>
-          </>
+          </span>
         ) : (
-          <>
-            {leftIcon && <span className="shrink-0">{leftIcon}</span>}
-            <span>{children}</span>
-            {rightIcon && <span className="shrink-0">{rightIcon}</span>}
-          </>
+          <span className="inline-flex flex-row flex-nowrap items-center justify-center gap-1.5 whitespace-nowrap">
+            {leftIcon && <span className="shrink-0 flex items-center justify-center">{leftIcon}</span>}
+            {children}
+            {rightIcon && <span className="shrink-0 flex items-center justify-center">{rightIcon}</span>}
+          </span>
         )}
       </button>
     );

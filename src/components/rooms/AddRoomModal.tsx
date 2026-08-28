@@ -96,9 +96,9 @@ export function AddRoomModal({ isOpen, onClose, onSuccess }: AddRoomModalProps) 
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
             Hủy
           </Button>
-          <Button type="submit" isLoading={loading} className="gap-1.5">
-            <Plus className="w-4 h-4" />
-            Tạo phòng
+          <Button type="submit" isLoading={loading} className="gap-1.5 whitespace-nowrap">
+            <Plus className="w-4 h-4 shrink-0" />
+            <span>Tạo phòng</span>
           </Button>
         </div>
       </form>

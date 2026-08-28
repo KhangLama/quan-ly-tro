@@ -230,8 +230,9 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                 {/* 2. Electricity */}
                 <tr>
                   <td className="border-r border-black p-1.5 font-medium">2- Tiền điện</td>
-                  <td className="border-r border-black p-1.5 text-[11px] text-slate-700">
-                    Chỉ số mới: <strong>{data.newElectric}</strong>; Chỉ số cũ: <strong>{data.oldElectric}</strong>
+                  <td className="border-r border-black p-1.5 text-[11px] text-slate-800 leading-normal">
+                    <div>Chỉ số mới: <strong>{data.newElectric}</strong></div>
+                    <div>Chỉ số cũ: <strong>{data.oldElectric}</strong></div>
                   </td>
                   <td className="border-r border-black p-1.5 text-right font-medium">{formatVND(data.electricPrice)} đ</td>
                   <td className="border-r border-black p-1.5 text-center font-bold text-amber-700">{data.electricUsage}</td>
@@ -241,8 +242,9 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                 {/* 3. Water */}
                 <tr>
                   <td className="border-r border-black p-1.5 font-medium">3- Tiền nước</td>
-                  <td className="border-r border-black p-1.5 text-[11px] text-slate-700">
-                    Chỉ số mới: <strong>{data.newWater}</strong>; Chỉ số cũ: <strong>{data.oldWater}</strong>
+                  <td className="border-r border-black p-1.5 text-[11px] text-slate-800 leading-normal">
+                    <div>Chỉ số mới: <strong>{data.newWater}</strong></div>
+                    <div>Chỉ số cũ: <strong>{data.oldWater}</strong></div>
                   </td>
                   <td className="border-r border-black p-1.5 text-right font-medium">{formatVND(data.waterPrice)} đ</td>
                   <td className="border-r border-black p-1.5 text-center font-bold text-sky-700">{data.waterUsage}</td>

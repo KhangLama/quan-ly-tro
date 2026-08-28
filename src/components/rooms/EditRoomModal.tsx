@@ -119,9 +119,9 @@ export function EditRoomModal({
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
             Hủy
           </Button>
-          <Button type="submit" isLoading={loading} className="gap-1.5">
-            <Check className="w-4 h-4" />
-            Lưu thay đổi
+          <Button type="submit" isLoading={loading} className="gap-1.5 whitespace-nowrap">
+            <Check className="w-4 h-4 shrink-0" />
+            <span>Lưu thay đổi</span>
           </Button>
         </div>
       </form>

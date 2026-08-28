@@ -179,9 +179,9 @@ export function EditTenantModal({
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
             Hủy
           </Button>
-          <Button type="submit" isLoading={loading} className="gap-1.5">
-            <Check className="w-4 h-4" />
-            Cập nhật
+          <Button type="submit" isLoading={loading} className="gap-1.5 whitespace-nowrap">
+            <Check className="w-4 h-4 shrink-0" />
+            <span>Cập nhật</span>
           </Button>
         </div>
       </form>

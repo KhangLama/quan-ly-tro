@@ -58,19 +58,19 @@ export function TenantCard({ tenant, onRefresh }: TenantCardProps) {
               variant="outline"
               size="sm"
               onClick={() => setShowEditModal(true)}
-              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 text-xs px-2.5 py-1 h-auto"
+              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 text-xs px-2.5 py-1.5 h-auto whitespace-nowrap shrink-0 gap-1"
             >
-              <Edit2 className="w-3.5 h-3.5 mr-1" />
-              Sửa
+              <Edit2 className="w-3.5 h-3.5 shrink-0" />
+              <span>Sửa</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowCheckoutModal(true)}
-              className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 text-xs px-2.5 py-1 h-auto"
+              className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 text-xs px-2.5 py-1.5 h-auto whitespace-nowrap shrink-0 gap-1"
             >
-              <LogOut className="w-3.5 h-3.5 mr-1" />
-              Trả phòng
+              <LogOut className="w-3.5 h-3.5 shrink-0" />
+              <span>Trả phòng</span>
             </Button>
           </div>
         </div>

@@ -104,9 +104,9 @@ export default function RoomDetailPage() {
         </Link>
 
         <Link href={`/invoices/new?roomId=${room.id}`}>
-          <Button size="sm" variant="outline" className="gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50">
-            <Zap className="w-3.5 h-3.5 text-amber-500" />
-            <span>Chốt điện nước phòng này</span>
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50 whitespace-nowrap">
+            <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span>Chốt điện nước</span>
           </Button>
         </Link>
       </div>

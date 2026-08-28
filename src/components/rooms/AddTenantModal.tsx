@@ -178,9 +178,9 @@ export function AddTenantModal({
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
             Hủy
           </Button>
-          <Button type="submit" isLoading={loading} className="gap-1.5">
-            <Check className="w-4 h-4" />
-            Lưu khách thuê
+          <Button type="submit" isLoading={loading} className="gap-1.5 whitespace-nowrap">
+            <Check className="w-4 h-4 shrink-0" />
+            <span>Lưu khách thuê</span>
           </Button>
         </div>
       </form>
