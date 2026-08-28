@@ -59,7 +59,7 @@ export async function updateSettings(data: {
     if (data.service_description !== undefined) updatePayload.service_description = data.service_description.trim();
     if (data.receipt_note !== undefined) updatePayload.receipt_note = data.receipt_note.trim();
 
-    const { data: updated, error } = await supabase
+    let { data: updated, error } = await supabase
       .from("settings")
       .upsert({
         id: 1,
@@ -68,6 +68,34 @@ export async function updateSettings(data: {
       })
       .select()
       .single();
+
+    // If Supabase table is missing optional receipt columns (PGRST204), fallback to core fields
+    if (error && (error.code === "PGRST204" || error.message?.includes("Could not find"))) {
+      const corePayload: any = {
+        id: 1,
+        updated_at: new Date().toISOString(),
+      };
+      if (updatePayload.electric_price !== undefined) corePayload.electric_price = updatePayload.electric_price;
+      if (updatePayload.water_price !== undefined) corePayload.water_price = updatePayload.water_price;
+      if (updatePayload.service_price !== undefined) corePayload.service_price = updatePayload.service_price;
+      if (updatePayload.bank_info !== undefined) corePayload.bank_info = updatePayload.bank_info;
+
+      const fallbackRes = await supabase
+        .from("settings")
+        .upsert(corePayload)
+        .select()
+        .single();
+
+      if (!fallbackRes.error) {
+        updated = {
+          ...fallbackRes.data,
+          address: updatePayload.address,
+          service_description: updatePayload.service_description,
+          receipt_note: updatePayload.receipt_note,
+        };
+        error = null;
+      }
+    }
 
     if (error) return { success: false, error: error.message };
 
