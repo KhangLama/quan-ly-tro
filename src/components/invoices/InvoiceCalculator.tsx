@@ -63,7 +63,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
   // Saving state & feedback
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [copiedZalo, setCopiedZalo] = useState(false);
+  const [shared, setShared] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [savedInvoice, setSavedInvoice] = useState<Invoice | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
@@ -180,8 +180,8 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     }
   };
 
-  // Handle Zalo Copy
-  const handleCopyZalo = async () => {
+  // Handle Share (Web Share API for all platforms, with clipboard fallback)
+  const handleShare = async () => {
     const selectedRoom = formData?.rooms.find((r) => r.id === roomId);
     const roomCode = selectedRoom ? selectedRoom.code : "Mới";
 
@@ -197,15 +197,24 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     });
 
     try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({
+          title: `Tiền phòng ${roomCode} - Tháng ${month}`,
+          text,
+        });
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(text);
+        setShared(true);
+        setTimeout(() => setShared(false), 3000);
       }
-      setCopiedZalo(true);
-      setTimeout(() => setCopiedZalo(false), 3000);
-    } catch {
-      // Fallback
-      setCopiedZalo(true);
-      setTimeout(() => setCopiedZalo(false), 3000);
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        if (typeof navigator !== "undefined" && navigator.clipboard) {
+          await navigator.clipboard.writeText(text);
+          setShared(true);
+          setTimeout(() => setShared(false), 3000);
+        }
+      }
     }
   };
 
@@ -528,22 +537,22 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
           </Button>
 
           <div className="grid grid-cols-2 gap-2.5">
-            {/* Copy Zalo Button */}
+            {/* Share Button */}
             <Button
               type="button"
               variant="outline"
-              onClick={handleCopyZalo}
-              className="w-full bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5 text-xs h-11"
+              onClick={handleShare}
+              className="w-full bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5 text-xs h-11 whitespace-nowrap"
             >
-              {copiedZalo ? (
+              {shared ? (
                 <>
-                  <Check className="w-4 h-4 text-emerald-400" />
-                  <span className="text-emerald-300 font-bold">Đã copy Zalo!</span>
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="text-emerald-300 font-bold">Đã sao chép!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4 text-sky-400" />
-                  <span>Copy tin Zalo</span>
+                  <Share2 className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span>Share</span>
                 </>
               )}
             </Button>

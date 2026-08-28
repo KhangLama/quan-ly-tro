@@ -169,7 +169,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
       <div className="space-y-3.5">
         {/* Action Buttons */}
         <div className="space-y-2 bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
-          {/* Primary Zalo Share Button */}
+          {/* Primary Share Button */}
           <Button
             type="button"
             onClick={handleShareZalo}
@@ -177,7 +177,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
             className="w-full bg-[#0068FF] hover:bg-[#0055d4] text-white font-extrabold text-xs gap-2 h-11 shadow-sm shadow-blue-500/20 whitespace-nowrap"
           >
             <Share2 className="w-4 h-4 shrink-0" />
-            <span>Chia sẻ qua Zalo (Gửi ảnh chọn người nhận)</span>
+            <span>Share</span>
           </Button>
 
           <div className="grid grid-cols-2 gap-2">
