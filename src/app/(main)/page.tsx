@@ -25,21 +25,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadData(selectedMonth);
-
-    // Auto-refresh when tab gains focus
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        loadData(selectedMonth);
-      }
-    };
-
-    window.addEventListener("focus", handleVisibilityChange);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", handleVisibilityChange);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
   }, [selectedMonth, loadData]);
 
   return (

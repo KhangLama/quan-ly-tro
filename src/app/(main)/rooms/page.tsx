@@ -25,20 +25,6 @@ export default function RoomsPage() {
 
   useEffect(() => {
     fetchRooms();
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        fetchRooms();
-      }
-    };
-
-    window.addEventListener("focus", handleVisibilityChange);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener("focus", handleVisibilityChange);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
   }, [fetchRooms]);
 
   const rentedCount = rooms.filter((r) => r.status === "rented").length;
