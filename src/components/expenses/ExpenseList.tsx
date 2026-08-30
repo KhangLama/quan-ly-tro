@@ -330,37 +330,37 @@ export function ExpenseList({
 
         {/* Table */}
         <div className="overflow-x-auto mt-4">
-          <table className="w-full text-xs text-left border-collapse min-w-[700px]">
+          <table className="w-full text-xs text-left border-collapse min-w-[850px]">
             <thead>
               <tr className="bg-[#2B4C7E] text-white text-xs font-bold tracking-wide">
-                <th className="py-2.5 px-3 border border-[#1E3A8A] text-center w-12">
+                <th className="py-2.5 px-3 border border-[#1E3A8A] text-center w-12 whitespace-nowrap">
                   STT
                 </th>
-                <th className="py-2.5 px-3 border border-[#1E3A8A] text-center w-28">
+                <th className="py-2.5 px-3 border border-[#1E3A8A] text-center w-28 whitespace-nowrap">
                   Ngày
                 </th>
-                <th className="py-2.5 px-3 border border-[#1E3A8A]">
+                <th className="py-2.5 px-4 border border-[#1E3A8A] min-w-[240px]">
                   Hạng mục
                 </th>
-                <th className="py-2.5 px-3 border border-[#1E3A8A] text-center w-28">
+                <th className="py-2.5 px-3 border border-[#1E3A8A] text-center w-28 whitespace-nowrap">
                   Phân loại
                 </th>
-                <th className="py-2.5 px-3 border border-[#1E3A8A] text-center w-36">
+                <th className="py-2.5 px-3 border border-[#1E3A8A] text-center w-36 whitespace-nowrap">
                   Trạng thái
                 </th>
-                <th className="py-2.5 px-3 border border-[#1E3A8A] text-right w-28">
+                <th className="py-2.5 px-3 border border-[#1E3A8A] text-right w-28 whitespace-nowrap">
                   Đơn giá
                 </th>
-                <th className="py-2.5 px-3 border border-[#1E3A8A] text-center w-20">
+                <th className="py-2.5 px-3 border border-[#1E3A8A] text-center w-20 whitespace-nowrap">
                   Số lượng
                 </th>
-                <th className="py-2.5 px-3 border border-[#1E3A8A] text-right w-28">
+                <th className="py-2.5 px-3 border border-[#1E3A8A] text-right w-32 whitespace-nowrap">
                   Thành tiền
                 </th>
-                <th className="py-2.5 px-3 border border-[#1E3A8A] w-36">
+                <th className="py-2.5 px-4 border border-[#1E3A8A] min-w-[180px]">
                   Ghi chú
                 </th>
-                <th className="py-2.5 px-2 border border-[#1E3A8A] text-center w-12 print:hidden">
+                <th className="py-2.5 px-2 border border-[#1E3A8A] text-center w-12 print:hidden whitespace-nowrap">
                   Xóa
                 </th>
               </tr>
@@ -384,29 +384,29 @@ export function ExpenseList({
                       className="hover:bg-slate-50/80 transition-colors"
                     >
                       {/* STT */}
-                      <td className="py-2 px-3 border border-slate-200 text-center font-bold text-slate-700">
+                      <td className="py-2.5 px-3 border border-slate-200 text-center font-bold text-slate-700 whitespace-nowrap">
                         {idx + 1}
                       </td>
 
                       {/* Ngày */}
-                      <td className="py-2 px-3 border border-slate-200 text-center font-medium text-slate-800 whitespace-nowrap">
+                      <td className="py-2.5 px-3 border border-slate-200 text-center font-medium text-slate-800 whitespace-nowrap">
                         {formatDateDisplay(exp.date)}
                       </td>
 
                       {/* Hạng mục */}
-                      <td className="py-2 px-3 border border-slate-200 font-semibold text-slate-900">
+                      <td className="py-2.5 px-4 border border-slate-200 font-semibold text-slate-900 min-w-[240px] leading-relaxed break-words">
                         {exp.item_name}
                       </td>
 
                       {/* Phân loại badge */}
-                      <td className="py-2 px-2 border border-slate-200 text-center">
+                      <td className="py-2.5 px-2 border border-slate-200 text-center whitespace-nowrap">
                         <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                           {exp.category || "Khác"}
                         </span>
                       </td>
 
                       {/* Trạng thái - Clickable toggle with pill badge styling */}
-                      <td className="py-2 px-2 border border-slate-200 text-center">
+                      <td className="py-2.5 px-2 border border-slate-200 text-center whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(exp.id)}
@@ -422,27 +422,27 @@ export function ExpenseList({
                       </td>
 
                       {/* Đơn giá */}
-                      <td className="py-2 px-3 border border-slate-200 text-right font-medium text-slate-800 whitespace-nowrap">
+                      <td className="py-2.5 px-3 border border-slate-200 text-right font-medium text-slate-800 whitespace-nowrap">
                         {formatVND(exp.unit_price)} đ
                       </td>
 
                       {/* Số lượng */}
-                      <td className="py-2 px-3 border border-slate-200 text-center font-bold text-slate-800">
+                      <td className="py-2.5 px-3 border border-slate-200 text-center font-bold text-slate-800 whitespace-nowrap">
                         {exp.quantity}
                       </td>
 
                       {/* Thành tiền */}
-                      <td className="py-2 px-3 border border-slate-200 text-right font-bold text-slate-900 whitespace-nowrap">
+                      <td className="py-2.5 px-3 border border-slate-200 text-right font-bold text-slate-900 whitespace-nowrap">
                         {formatVND(exp.total_amount)} đ
                       </td>
 
                       {/* Ghi chú */}
-                      <td className="py-2 px-3 border border-slate-200 text-[11px] text-slate-500 truncate max-w-[150px]">
+                      <td className="py-2.5 px-4 border border-slate-200 text-xs text-slate-600 min-w-[180px] leading-relaxed break-words">
                         {exp.notes || ""}
                       </td>
 
                       {/* Delete action */}
-                      <td className="py-2 px-1 border border-slate-200 text-center print:hidden">
+                      <td className="py-2.5 px-1 border border-slate-200 text-center print:hidden whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => handleDelete(exp)}
