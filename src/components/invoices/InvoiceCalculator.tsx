@@ -32,6 +32,7 @@ import {
   type InvoiceFormDataResult,
 } from "@/actions/invoices";
 import { ReceiptCanvas, type ReceiptData } from "./ReceiptCanvas";
+import { VietnameseMonthPicker } from "@/components/ui/VietnameseMonthPicker";
 import { toPng, toBlob } from "html-to-image";
 import type { Invoice } from "@/types";
 
@@ -502,13 +503,13 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1 flex items-center gap-1">
               <Calendar className="w-3 h-3 text-slate-400" />
-              Tháng
+              Tháng chốt số
             </label>
-            <Input
-              type="month"
+            <VietnameseMonthPicker
               value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="text-xs font-bold"
+              onChange={(newMonth) => setMonth(newMonth)}
+              showQuickNav={false}
+              className="w-full"
             />
           </div>
         </div>
@@ -731,7 +732,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
               className="w-full bg-[#0068FF] hover:bg-[#0055d4] text-white font-extrabold text-xs gap-2 h-11 shadow-sm shadow-blue-500/20 whitespace-nowrap"
             >
               <Share2 className="w-4 h-4 shrink-0" />
-              <span>Share</span>
+              <span>Chia sẻ ảnh</span>
             </Button>
 
             <div className="grid grid-cols-3 gap-2">
@@ -769,12 +770,12 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
                 {copiedImage ? (
                   <>
                     <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="text-emerald-700">Đã copy!</span>
+                    <span className="text-emerald-700">Đã sao chép!</span>
                   </>
                 ) : (
                   <>
                     <ImageIcon className="w-4 h-4 text-slate-500 shrink-0" />
-                    <span>Copy</span>
+                    <span>Sao chép ảnh</span>
                   </>
                 )}
               </Button>

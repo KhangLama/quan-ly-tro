@@ -133,7 +133,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
             className="w-full bg-[#0068FF] hover:bg-[#0055d4] text-white font-extrabold text-xs gap-2 h-11 shadow-sm shadow-blue-500/20 whitespace-nowrap"
           >
             <Share2 className="w-4 h-4 shrink-0" />
-            <span>Share</span>
+            <span>Chia sẻ ảnh</span>
           </Button>
 
           <div className="grid grid-cols-2 gap-2">
@@ -158,12 +158,12 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
               {copiedImage ? (
                 <>
                   <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-emerald-700">Đã copy ảnh!</span>
+                  <span className="text-emerald-700">Đã sao chép ảnh!</span>
                 </>
               ) : (
                 <>
                   <ImageIcon className="w-4 h-4 text-slate-500 shrink-0" />
-                  <span>Copy ảnh biên lai</span>
+                  <span>Sao chép ảnh</span>
                 </>
               )}
             </Button>

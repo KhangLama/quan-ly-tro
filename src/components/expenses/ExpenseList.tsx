@@ -13,6 +13,7 @@ import {
   Clock,
   AlertCircle,
   Filter,
+  Edit2,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -24,6 +25,8 @@ import {
   type CreateExpenseInput,
 } from "@/actions/expenses";
 import { AddExpenseModal } from "./AddExpenseModal";
+import { EditExpenseModal } from "./EditExpenseModal";
+import { VietnameseMonthPicker } from "@/components/ui/VietnameseMonthPicker";
 import { toPng, toBlob } from "html-to-image";
 import type { Expense } from "@/types";
 
@@ -56,6 +59,7 @@ export function ExpenseList({
     initialTotalPaidAmount
   );
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [loading, setLoading] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [sharing, setSharing] = useState(false);
@@ -122,7 +126,7 @@ export function ExpenseList({
   // Filtered expenses
   const displayedExpenses = expenses.filter((exp) => {
     if (filterCategory === "all") return true;
-    return exp.category === filterCategory;
+    return (exp.category || "Khác") === filterCategory;
   });
 
   // Unique categories for filter
@@ -172,7 +176,7 @@ export function ExpenseList({
   };
 
   return (
-    <div className="space-y-4 max-w-5xl mx-auto pb-12">
+    <div className="space-y-4 max-w-7xl mx-auto pb-12">
       {/* Top Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
         <div>
@@ -187,15 +191,11 @@ export function ExpenseList({
 
         <div className="flex items-center gap-2 flex-wrap">
           {/* Month Picker */}
-          <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-2xl border border-slate-200">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => handleMonthChange(e.target.value)}
-              className="bg-transparent text-xs font-bold text-slate-800 focus:outline-hidden"
-            />
-          </div>
+          <VietnameseMonthPicker
+            value={month}
+            onChange={handleMonthChange}
+            showQuickNav={true}
+          />
 
           {/* Add Expense Button */}
           <Button
@@ -216,14 +216,14 @@ export function ExpenseList({
             className="text-xs font-bold gap-1.5 h-9 px-3 rounded-2xl text-slate-700 border-slate-200 hover:bg-slate-50"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Share ảnh</span>
+            <span>Chia sẻ ảnh</span>
           </Button>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Total Pending (Chưa thanh toán) - Exactly matching user image */}
+        {/* Total Pending (Chưa thanh toán) */}
         <Card className="p-4 bg-gradient-to-br from-rose-50 to-white border-rose-200/80 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">
@@ -302,7 +302,7 @@ export function ExpenseList({
                   : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
               }`}
             >
-              {cat} ({expenses.filter((e) => e.category === cat).length})
+              {cat} ({expenses.filter((e) => (e.category || "Khác") === cat).length})
             </button>
           ))}
         </div>
@@ -311,13 +311,19 @@ export function ExpenseList({
       {/* Main Expense Table Container */}
       <div
         ref={tableRef}
+        id="expenses-table-canvas"
         className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-4 sm:p-6"
       >
-        {/* Table Canvas Header matching user image */}
+        {/* Table Canvas Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-2">
-          <h2 className="text-xl font-black text-[#1E3A8A] tracking-wider uppercase">
-            CHI PHÍ {innName}
-          </h2>
+          <div>
+            <h2 className="text-xl font-black text-[#1E3A8A] tracking-wider uppercase">
+              CHI PHÍ {innName}
+            </h2>
+            <p className="text-xs text-slate-500 font-semibold mt-0.5">
+              Bảng kê khai chi phí phát sinh — Tháng {month}
+            </p>
+          </div>
           <div className="text-right">
             <span className="text-xs font-bold text-slate-600 mr-2">
               Tổng chưa thanh toán:
@@ -360,8 +366,8 @@ export function ExpenseList({
                 <th className="py-2.5 px-4 border border-[#1E3A8A] min-w-[180px]">
                   Ghi chú
                 </th>
-                <th className="py-2.5 px-2 border border-[#1E3A8A] text-center w-12 print:hidden whitespace-nowrap">
-                  Xóa
+                <th className="py-2.5 px-2 border border-[#1E3A8A] text-center w-20 print:hidden whitespace-nowrap">
+                  Thao tác
                 </th>
               </tr>
             </thead>
@@ -441,16 +447,28 @@ export function ExpenseList({
                         {exp.notes || ""}
                       </td>
 
-                      {/* Delete action */}
-                      <td className="py-2.5 px-1 border border-slate-200 text-center print:hidden whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(exp)}
-                          title="Xóa khoản chi này"
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                      {/* Action buttons: Edit and Delete */}
+                      <td className="py-2.5 px-2 border border-slate-200 text-center print:hidden whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setEditingExpense(exp)}
+                            title="Chỉnh sửa khoản chi này"
+                            aria-label="Chỉnh sửa chi phí"
+                            className="p-1 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(exp)}
+                            title="Xóa khoản chi này"
+                            aria-label="Xóa chi phí"
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -482,6 +500,14 @@ export function ExpenseList({
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         currentMonth={month}
+        onSuccess={() => fetchExpenses(month)}
+      />
+
+      {/* Edit Expense Modal */}
+      <EditExpenseModal
+        isOpen={!!editingExpense}
+        onClose={() => setEditingExpense(null)}
+        expense={editingExpense}
         onSuccess={() => fetchExpenses(month)}
       />
     </div>

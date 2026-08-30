@@ -33,6 +33,26 @@ export function MonthSelector({ currentMonth, onMonthChange }: MonthSelectorProp
     onMonthChange(formatted);
   };
 
+  // Generate list of 36 months for dropdown
+  const monthOptions = React.useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const currentMonthNum = new Date().getMonth() + 1;
+    const currentYm = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}`;
+
+    const options: { value: string; label: string }[] = [];
+    for (let y = currentYear + 1; y >= currentYear - 3; y--) {
+      for (let m = 12; m >= 1; m--) {
+        const val = `${y}-${String(m).padStart(2, "0")}`;
+        const isCur = val === currentYm;
+        options.push({
+          value: val,
+          label: `Tháng ${String(m).padStart(2, "0")}/${y}${isCur ? " (Hiện tại)" : ""}`,
+        });
+      }
+    }
+    return options;
+  }, []);
+
   return (
     <div className="flex items-center justify-between bg-white rounded-2xl border border-slate-200/80 p-2 shadow-xs">
       <button
@@ -44,21 +64,25 @@ export function MonthSelector({ currentMonth, onMonthChange }: MonthSelectorProp
         <ChevronLeft className="w-5 h-5" />
       </button>
 
-      <div className="flex items-center gap-2">
-        <Calendar className="w-4 h-4 text-indigo-600" />
-        <label className="relative cursor-pointer">
-          <span className="text-sm font-bold text-slate-900">
-            Tháng {String(month).padStart(2, "0")}/{year}
-          </span>
-          <input
-            type="month"
-            value={currentMonth}
-            onChange={(e) => {
-              if (e.target.value) onMonthChange(e.target.value);
-            }}
-            className="absolute inset-0 opacity-0 cursor-pointer w-full"
-          />
-        </label>
+      <div className="relative flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer">
+        <Calendar className="w-4 h-4 text-indigo-600 shrink-0" />
+        <select
+          value={currentMonth}
+          onChange={(e) => {
+            if (e.target.value) onMonthChange(e.target.value);
+          }}
+          aria-label="Chọn tháng thống kê"
+          className="bg-transparent text-sm font-bold text-slate-900 cursor-pointer focus:outline-hidden appearance-none pr-4"
+        >
+          {monthOptions.map((opt) => (
+            <option key={opt.value} value={opt.value} className="text-slate-900 font-medium">
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <span className="pointer-events-none absolute right-1 text-[10px] text-slate-400">
+          ▼
+        </span>
       </div>
 
       <button
