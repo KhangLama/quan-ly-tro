@@ -137,10 +137,16 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
           ? Number(rawDiscount)
           : Math.max(0, invSubtotal - Number(res.existingInvoice.total_amount));
 
+      let savedReason = (res.existingInvoice as any).discount_reason;
+      if (!savedReason && typeof window !== "undefined") {
+        try {
+          savedReason = localStorage.getItem(`inv_reason_${targetRoomId}_${targetMonth}`);
+        } catch {}
+      }
+
       setDiscount(String(savedDiscount || 0));
       setDiscountReason(
-        (res.existingInvoice as any).discount_reason ||
-          (savedDiscount > 0 ? "Event giảm giá tháng" : "")
+        savedReason || (savedDiscount > 0 ? "Event giảm giá tháng" : "")
       );
 
       setSavedInvoice(res.existingInvoice);
@@ -213,6 +219,15 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     setSaving(false);
 
     if (res.success && res.invoice) {
+      if (typeof window !== "undefined") {
+        try {
+          if (discountReason.trim()) {
+            localStorage.setItem(`inv_reason_${roomId}_${month}`, discountReason.trim());
+          } else {
+            localStorage.removeItem(`inv_reason_${roomId}_${month}`);
+          }
+        } catch {}
+      }
       setSavedInvoice(res.invoice);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
@@ -243,6 +258,11 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     setDeleting(false);
 
     if (res.success) {
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem(`inv_reason_${roomId}_${month}`);
+        } catch {}
+      }
       setSavedInvoice(null);
       setSaveSuccess(true);
       loadData(roomId, month);

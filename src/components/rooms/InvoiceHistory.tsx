@@ -70,7 +70,15 @@ export function InvoiceHistory({
         ? Number(rawDiscount)
         : Math.max(0, subtotal - totalAmount);
 
-    const discountReason = (inv as any).discount_reason || (discount > 0 ? "Event giảm giá tháng" : undefined);
+    let discountReason = (inv as any).discount_reason;
+    if (!discountReason && typeof window !== "undefined") {
+      try {
+        discountReason = localStorage.getItem(`inv_reason_${inv.room_id}_${inv.month}`);
+      } catch {}
+    }
+    if (!discountReason && discount > 0) {
+      discountReason = "Event giảm giá tháng";
+    }
 
     setSelectedReceipt({
       roomCode,
