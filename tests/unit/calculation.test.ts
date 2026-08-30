@@ -180,3 +180,27 @@ describe("Unit Test: Electricity, Water & Grand Total Calculations", () => {
     expect(result.totalAmount).toBe(0);
   });
 });
+
+describe("Unit Test: Natural Room Code Ordering", () => {
+  it("sorts room codes naturally from P1 to P10 without P10 appearing right after P1", async () => {
+    const { compareRoomCodes } = await import("../../src/lib/utils.ts");
+    const rawCodes = ["P1", "P10", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"];
+    const sorted = [...rawCodes].sort(compareRoomCodes);
+
+    expect(sorted).toEqual(["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10"]);
+  });
+
+  it("sorts room objects by room.code property naturally", async () => {
+    const { compareRoomCodes } = await import("../../src/lib/utils.ts");
+    const rooms = [
+      { id: "10", code: "P10" },
+      { id: "1", code: "P1" },
+      { id: "2", code: "P2" },
+      { id: "5", code: "P5" },
+    ];
+    const sorted = [...rooms].sort(compareRoomCodes);
+
+    expect(sorted.map((r) => r.code)).toEqual(["P1", "P2", "P5", "P10"]);
+  });
+});
+

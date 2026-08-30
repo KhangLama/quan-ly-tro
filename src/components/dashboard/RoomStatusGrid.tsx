@@ -5,7 +5,7 @@ import Link from "next/link";
 import { User, Phone, ChevronRight, Zap } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { formatVND } from "@/lib/utils";
+import { formatVND, compareRoomCodes } from "@/lib/utils";
 import type { DashboardRoomCard } from "@/actions/dashboard";
 
 interface RoomStatusGridProps {
@@ -14,7 +14,11 @@ interface RoomStatusGridProps {
 }
 
 export function RoomStatusGrid({ rooms, selectedMonth }: RoomStatusGridProps) {
-  if (rooms.length === 0) {
+  const sortedRooms = React.useMemo(() => {
+    return [...rooms].sort(compareRoomCodes);
+  }, [rooms]);
+
+  if (sortedRooms.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-8 text-center">
         <p className="text-sm text-slate-500 font-medium">Chưa có phòng nào trong hệ thống</p>
@@ -24,7 +28,7 @@ export function RoomStatusGrid({ rooms, selectedMonth }: RoomStatusGridProps) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-      {rooms.map((room) => {
+      {sortedRooms.map((room) => {
         const isPaid = room.billingBadgeLabel === "Đã thu";
         const isPending = room.billingBadgeLabel === "Chưa thu";
         const isEmpty = room.billingBadgeLabel === "Trống";

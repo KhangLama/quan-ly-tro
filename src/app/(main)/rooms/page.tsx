@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { AddRoomModal } from "@/components/rooms/AddRoomModal";
 import { getRooms } from "@/actions/rooms";
-import { formatVND } from "@/lib/utils";
+import { formatVND, compareRoomCodes } from "@/lib/utils";
 import type { RoomWithDetails } from "@/types";
 
 export default function RoomsPage() {
@@ -19,7 +19,8 @@ export default function RoomsPage() {
   const fetchRooms = useCallback(async () => {
     setLoading(true);
     const res = await getRooms();
-    setRooms(res.rooms || []);
+    const list = (res.rooms || []).slice().sort(compareRoomCodes);
+    setRooms(list);
     setLoading(false);
   }, []);
 

@@ -10,6 +10,7 @@ async function safeRevalidatePath(path: string) {
 import { createClient } from "../lib/supabase/server.ts";
 import { calculateInvoice } from "../lib/calculations/invoice.ts";
 import type { Invoice, InvoiceInsert, Room, Setting } from "../types/index.ts";
+import { compareRoomCodes } from "../lib/utils.ts";
 
 export interface InvoiceFormDataResult {
   settings: Setting | null;
@@ -49,7 +50,7 @@ export async function getInvoiceFormData(
       supabase.from("rooms").select("*").order("code", { ascending: true }),
     ]);
 
-    const rooms: Room[] = roomsData || [];
+    const rooms: Room[] = (roomsData || []).slice().sort(compareRoomCodes);
     const selectedRoom = rooms.find((r) => r.id === roomId) || rooms[0] || null;
 
     if (!selectedRoom) {

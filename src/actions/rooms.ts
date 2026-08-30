@@ -9,6 +9,7 @@ async function safeRevalidatePath(path: string) {
 
 import { createClient } from "../lib/supabase/server.ts";
 import type { Room, RoomInsert, RoomUpdate, RoomWithDetails, Tenant, Invoice } from "../types/index.ts";
+import { compareRoomCodes } from "../lib/utils.ts";
 
 export interface GetRoomDetailsResult {
   room: Room | null;
@@ -47,6 +48,8 @@ export async function getRooms(): Promise<{ rooms: RoomWithDetails[]; error?: st
         leadTenant: lead,
       };
     });
+
+    roomsWithDetails.sort(compareRoomCodes);
 
     return { rooms: roomsWithDetails };
   } catch (err: any) {

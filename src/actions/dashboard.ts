@@ -2,6 +2,7 @@
 
 import { createClient } from "../lib/supabase/server.ts";
 import type { Room, Tenant, Invoice, DashboardStats } from "../types/index.ts";
+import { compareRoomCodes } from "../lib/utils.ts";
 
 export interface DashboardRoomCard {
   id: string;
@@ -153,6 +154,8 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
         billingBadgeLabel,
       };
     });
+
+    roomCards.sort(compareRoomCodes);
 
     return {
       stats: {
