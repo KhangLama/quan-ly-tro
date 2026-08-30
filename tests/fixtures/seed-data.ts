@@ -227,6 +227,7 @@ export class MockSupabaseEngine {
   public rooms: RoomRecord[] = [];
   public tenants: TenantRecord[] = [];
   public invoices: InvoiceRecord[] = [];
+  public expenses: any[] = [];
 
   constructor() {
     this.reset();
@@ -237,16 +238,17 @@ export class MockSupabaseEngine {
     this.rooms = JSON.parse(JSON.stringify(INITIAL_ROOMS));
     this.tenants = JSON.parse(JSON.stringify(INITIAL_TENANTS));
     this.invoices = [];
+    this.expenses = [];
   }
 
-  public from(tableName: "settings" | "rooms" | "tenants" | "invoices") {
+  public from(tableName: "settings" | "rooms" | "tenants" | "invoices" | "expenses") {
     return new MockQueryBuilder(this, tableName);
   }
 }
 
 class MockQueryBuilder {
   private db: MockSupabaseEngine;
-  private tableName: "settings" | "rooms" | "tenants" | "invoices";
+  private tableName: "settings" | "rooms" | "tenants" | "invoices" | "expenses";
   private action: "select" | "insert" | "update" | "delete" = "select";
   private insertData: any = null;
   private updateData: any = null;

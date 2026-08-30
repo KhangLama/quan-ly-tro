@@ -161,6 +161,50 @@ export interface Database {
           created_at?: string;
         };
       };
+      expenses: {
+        Row: {
+          id: string;
+          month: string;
+          date: string;
+          item_name: string;
+          category: string;
+          status: "pending" | "paid";
+          unit_price: number;
+          quantity: number;
+          total_amount: number;
+          notes?: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          month: string;
+          date: string;
+          item_name: string;
+          category?: string;
+          status?: "pending" | "paid";
+          unit_price?: number;
+          quantity?: number;
+          total_amount?: number;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          month?: string;
+          date?: string;
+          item_name?: string;
+          category?: string;
+          status?: "pending" | "paid";
+          unit_price?: number;
+          quantity?: number;
+          total_amount?: number;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }

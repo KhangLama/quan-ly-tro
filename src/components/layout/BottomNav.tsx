@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Calculator,
+  Receipt,
   DoorOpen,
   Settings,
 } from "lucide-react";
@@ -20,15 +21,20 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
+    label: "Chốt số",
+    href: "/invoices/new",
+    icon: Calculator,
+  },
+  {
+    label: "Chi phí",
+    href: "/expenses",
+    icon: Receipt,
+  },
+  {
     label: "Tổng quan",
     href: "/",
     icon: LayoutDashboard,
     exact: true,
-  },
-  {
-    label: "Chốt số",
-    href: "/invoices/new",
-    icon: Calculator,
   },
   {
     label: "Phòng trọ",

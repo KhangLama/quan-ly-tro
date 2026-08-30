@@ -17,10 +17,15 @@ export type Invoice = Database["public"]["Tables"]["invoices"]["Row"];
 export type InvoiceInsert = Database["public"]["Tables"]["invoices"]["Insert"];
 export type InvoiceUpdate = Database["public"]["Tables"]["invoices"]["Update"];
 
-// Room status type
+export type Expense = Database["public"]["Tables"]["expenses"]["Row"];
+export type ExpenseInsert = Database["public"]["Tables"]["expenses"]["Insert"];
+export type ExpenseUpdate = Database["public"]["Tables"]["expenses"]["Update"];
+
+// Status types
 export type RoomStatus = "rented" | "empty";
 export type TenantStatus = "active" | "moved_out";
 export type InvoiceStatus = "pending" | "paid";
+export type ExpenseStatus = "pending" | "paid";
 
 // Extended Room type with relations
 export interface RoomWithDetails extends Room {
