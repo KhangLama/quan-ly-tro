@@ -113,6 +113,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      size="2xl"
       title={
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-amber-500" />
@@ -183,7 +184,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
         </div>
 
         {/* Scrollable Container for Receipt */}
-        <div className="overflow-x-auto p-1 max-h-[60vh] overflow-y-auto rounded-xl border border-slate-200 bg-slate-100 shadow-inner">
+        <div className="overflow-x-auto p-2 max-h-[68vh] overflow-y-auto rounded-2xl border border-slate-200/90 bg-slate-100/90 shadow-inner flex justify-center">
           <ReceiptCanvas ref={receiptRef} data={data} />
         </div>
 
