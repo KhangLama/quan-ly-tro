@@ -59,7 +59,7 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-lg">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-lg">
       <div className="max-w-lg mx-auto px-3 h-16 flex items-center justify-around pb-safe">
         {NAV_ITEMS.map((item) => {
           const active = isItemActive(item);

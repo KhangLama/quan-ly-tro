@@ -12,7 +12,7 @@ export default function MainLayout({
     <ToastProvider>
       <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-sky-500 selection:text-white">
         <Header />
-        <main className="flex-1 w-full max-w-lg mx-auto px-4 pt-4 pb-24">
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-24 md:pb-12">
           {children}
         </main>
         <BottomNav />

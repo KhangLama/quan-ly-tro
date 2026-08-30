@@ -159,71 +159,79 @@ export default function RoomDetailPage() {
         </div>
       </Card>
 
-      {/* Active Tenants Section */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-indigo-600" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-              Khách đang ở ({activeTenants.length})
-            </h2>
+      {/* Desktop 2-Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Tenants & History */}
+        <div className="lg:col-span-6 space-y-4">
+          {/* Active Tenants Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-indigo-600" />
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                  Khách đang ở ({activeTenants.length})
+                </h2>
+              </div>
+
+              <Button
+                size="sm"
+                onClick={() => setIsAddTenantModalOpen(true)}
+                className="gap-1 text-xs"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Thêm khách / Ở ghép</span>
+              </Button>
+            </div>
+
+            {activeTenants.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-6 text-center">
+                <p className="text-xs text-slate-500">Phòng hiện chưa có khách thuê</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsAddTenantModalOpen(true)}
+                  className="mt-2.5 gap-1.5 text-xs text-indigo-600"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Thêm khách nhận phòng
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {activeTenants.map((tenant) => (
+                  <TenantCard
+                    key={tenant.id}
+                    tenant={tenant}
+                    onRefresh={fetchDetails}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          <Button
-            size="sm"
-            onClick={() => setIsAddTenantModalOpen(true)}
-            className="gap-1 text-xs"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Thêm khách / Ở ghép</span>
-          </Button>
+          {/* Moved Out Tenant History */}
+          <TenantHistory tenants={movedOutTenants} />
         </div>
 
-        {activeTenants.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-6 text-center">
-            <p className="text-xs text-slate-500">Phòng hiện chưa có khách thuê</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsAddTenantModalOpen(true)}
-              className="mt-2.5 gap-1.5 text-xs text-indigo-600"
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              Thêm khách nhận phòng
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {activeTenants.map((tenant) => (
-              <TenantCard
-                key={tenant.id}
-                tenant={tenant}
-                onRefresh={fetchDetails}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        {/* Right Column: Invoices History */}
+        <div className="lg:col-span-6 space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-indigo-600" />
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                Lịch sử hóa đơn ({invoices.length})
+              </h2>
+            </div>
 
-      {/* Moved Out Tenant History */}
-      <TenantHistory tenants={movedOutTenants} />
-
-      {/* Room Invoices History */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-indigo-600" />
-          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-            Lịch sử hóa đơn ({invoices.length})
-          </h2>
+            <InvoiceHistory
+              invoices={invoices}
+              roomCode={room.code}
+              customerName={leadTenant?.name || undefined}
+              customerPhone={leadTenant?.phone || undefined}
+              onRefresh={fetchDetails}
+            />
+          </div>
         </div>
-
-        <InvoiceHistory
-          invoices={invoices}
-          roomCode={room.code}
-          customerName={leadTenant?.name || undefined}
-          customerPhone={leadTenant?.phone || undefined}
-          onRefresh={fetchDetails}
-        />
       </div>
 
       {/* Add Tenant Modal */}

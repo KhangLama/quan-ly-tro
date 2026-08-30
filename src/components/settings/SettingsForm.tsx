@@ -111,9 +111,13 @@ export function SettingsForm() {
         </div>
       )}
 
-      {/* Utility Rates Card */}
-      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3.5">
-        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+      {/* Form Content in 2-Column Responsive Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        {/* Left Column */}
+        <div className="space-y-4">
+          {/* Utility Rates Card */}
+          <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3.5">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
           Đơn giá điện, nước & dịch vụ
         </h3>
 
@@ -230,6 +234,36 @@ export function SettingsForm() {
         </div>
       </Card>
 
+      {/* Bank Account Info Card */}
+      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
+        <div className="flex items-center gap-1.5">
+          <CreditCard className="w-4 h-4 text-indigo-600" />
+          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            Thông tin chuyển khoản ngân hàng
+          </h3>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">
+            Tên ngân hàng - Số tài khoản - Chủ tài khoản
+          </label>
+          <textarea
+            rows={3}
+            value={bankInfo}
+            onChange={(e) => setBankInfo(e.target.value)}
+            placeholder="e.g. MB Bank - 0987654321 - NGUYEN VAN A"
+            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <p className="text-[11px] text-slate-500 mt-1">
+            Thông tin này sẽ hiển thị trên biểu mẫu tính tiền và hỗ trợ gửi kèm khách thuê.
+          </p>
+        </div>
+      </Card>
+    </div>
+    {/* End of Left Column */}
+
+    {/* Right Column */}
+    <div className="space-y-4">
       {/* Receipt Customization Card */}
       <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3.5">
         <div className="flex items-center gap-1.5">
@@ -259,7 +293,7 @@ export function SettingsForm() {
             Nội dung ghi chú chân biên lai (Tùy chọn)
           </label>
           <textarea
-            rows={2}
+            rows={4}
             value={receiptNote}
             onChange={(e) => setReceiptNote(e.target.value)}
             placeholder="Để trống sẽ tự động hiển thị hướng dẫn thanh toán kèm STK ngân hàng ở dưới"
@@ -270,35 +304,13 @@ export function SettingsForm() {
           </p>
         </div>
       </Card>
-
-      {/* Bank Account Info Card */}
-      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex items-center gap-1.5">
-          <CreditCard className="w-4 h-4 text-indigo-600" />
-          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Thông tin chuyển khoản ngân hàng
-          </h3>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Tên ngân hàng - Số tài khoản - Chủ tài khoản
-          </label>
-          <textarea
-            rows={3}
-            value={bankInfo}
-            onChange={(e) => setBankInfo(e.target.value)}
-            placeholder="e.g. MB Bank - 0987654321 - NGUYEN VAN A"
-            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <p className="text-[11px] text-slate-500 mt-1">
-            Thông tin này sẽ hiển thị trên biểu mẫu tính tiền và hỗ trợ gửi kèm khách thuê.
-          </p>
-        </div>
-      </Card>
+    </div>
+    {/* End of Right Column */}
+  </div>
+  {/* End of 2-Column Grid */}
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-between pt-2">
+      <div className="flex items-center justify-between pt-2 border-t border-slate-200">
         <Button
           type="button"
           variant="outline"

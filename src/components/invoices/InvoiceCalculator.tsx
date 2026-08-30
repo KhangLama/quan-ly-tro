@@ -397,7 +397,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
   }
 
   return (
-    <div className="space-y-4 max-w-lg mx-auto pb-10">
+    <div className="space-y-4 max-w-7xl mx-auto pb-10">
       {/* Notifications */}
       {errorMsg && (
         <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
@@ -446,6 +446,11 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
           </div>
         </div>
       )}
+
+      {/* 2-Column Grid on Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Form Cards */}
+        <div className="lg:col-span-6 xl:col-span-6 space-y-4">
 
       {/* Card 1: Room & Month Selection */}
       <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
@@ -668,106 +673,111 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
           ))}
         </div>
       </Card>
+    </div>
+    {/* End of Left Column */}
 
-      {/* SECTION: LIVE RECEIPT & ACTIONS */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
-            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Phiếu báo tiền phòng (Biên lai)
-            </h2>
-          </div>
-          <span className="text-[11px] font-bold text-indigo-600">
-            Tổng: {formatVND(calculation.totalAmount)}đ
-          </span>
-        </div>
-
-        {/* Live Receipt Canvas */}
-        <div className="overflow-x-auto p-1 max-h-[65vh] overflow-y-auto rounded-2xl border border-slate-200/90 bg-slate-100 shadow-inner">
-          {receiptData ? (
-            <ReceiptCanvas ref={receiptRef} data={receiptData} />
-          ) : (
-            <div className="p-8 text-center text-xs text-slate-400">
-              Vui lòng chọn phòng để hiển thị biên lai
+        {/* Right Column: Live Receipt & Actions */}
+        <div className="lg:col-span-6 xl:col-span-6 space-y-3 lg:sticky lg:top-20">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+              <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                Phiếu báo tiền phòng (Biên lai)
+              </h2>
             </div>
-          )}
-        </div>
-
-        {/* Action Buttons Panel */}
-        <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 shadow-xs">
-          {/* Primary Share Button (Pure image share) */}
-          <Button
-            type="button"
-            onClick={handleShareImage}
-            isLoading={sharing}
-            className="w-full bg-[#0068FF] hover:bg-[#0055d4] text-white font-extrabold text-xs gap-2 h-11 shadow-sm shadow-blue-500/20 whitespace-nowrap"
-          >
-            <Share2 className="w-4 h-4 shrink-0" />
-            <span>Share</span>
-          </Button>
-
-          <div className="grid grid-cols-3 gap-2">
-            {/* Save Button */}
-            <Button
-              type="button"
-              onClick={() => handleSave("pending")}
-              isLoading={saving}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-1.5 h-10 shadow-sm whitespace-nowrap"
-            >
-              <Save className="w-4 h-4 shrink-0" />
-              <span>Lưu</span>
-            </Button>
-
-            {/* Download Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleDownloadImage}
-              isLoading={downloading}
-              className="w-full font-bold text-xs gap-1.5 h-10 text-slate-700 border-slate-300 hover:bg-white whitespace-nowrap"
-            >
-              <Download className="w-4 h-4 shrink-0 text-slate-600" />
-              <span>Tải ảnh</span>
-            </Button>
-
-            {/* Copy Image Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCopyImage}
-              disabled={downloading || sharing}
-              className="w-full font-bold text-xs gap-1.5 h-10 text-slate-700 border-slate-300 hover:bg-white whitespace-nowrap"
-            >
-              {copiedImage ? (
-                <>
-                  <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-emerald-700">Đã copy!</span>
-                </>
-              ) : (
-                <>
-                  <ImageIcon className="w-4 h-4 text-slate-500 shrink-0" />
-                  <span>Copy</span>
-                </>
-              )}
-            </Button>
+            <span className="text-[11px] font-bold text-indigo-600">
+              Tổng: {formatVND(calculation.totalAmount)}đ
+            </span>
           </div>
 
-          {/* Quick Zalo Direct Chat Link */}
-          {formData?.leadTenant?.phone && (
-            <div className="pt-1 text-center">
-              <a
-                href={`https://zalo.me/${formData.leadTenant.phone.replace(/\D/g, "")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-[#0068FF] hover:underline font-semibold"
+          {/* Live Receipt Canvas */}
+          <div className="overflow-x-auto p-1 max-h-[65vh] overflow-y-auto rounded-2xl border border-slate-200/90 bg-slate-100 shadow-inner flex justify-center">
+            {receiptData ? (
+              <ReceiptCanvas ref={receiptRef} data={receiptData} />
+            ) : (
+              <div className="p-8 text-center text-xs text-slate-400">
+                Vui lòng chọn phòng để hiển thị biên lai
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons Panel */}
+          <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+            {/* Primary Share Button (Pure image share) */}
+            <Button
+              type="button"
+              onClick={handleShareImage}
+              isLoading={sharing}
+              className="w-full bg-[#0068FF] hover:bg-[#0055d4] text-white font-extrabold text-xs gap-2 h-11 shadow-sm shadow-blue-500/20 whitespace-nowrap"
+            >
+              <Share2 className="w-4 h-4 shrink-0" />
+              <span>Share</span>
+            </Button>
+
+            <div className="grid grid-cols-3 gap-2">
+              {/* Save Button */}
+              <Button
+                type="button"
+                onClick={() => handleSave("pending")}
+                isLoading={saving}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-1.5 h-10 shadow-sm whitespace-nowrap"
               >
-                <span>💬 Mở khung chat Zalo với {formData.leadTenant.name} ({formData.leadTenant.phone})</span>
-              </a>
+                <Save className="w-4 h-4 shrink-0" />
+                <span>Lưu</span>
+              </Button>
+
+              {/* Download Button */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDownloadImage}
+                isLoading={downloading}
+                className="w-full font-bold text-xs gap-1.5 h-10 text-slate-700 border-slate-300 hover:bg-white whitespace-nowrap"
+              >
+                <Download className="w-4 h-4 shrink-0 text-slate-600" />
+                <span>Tải ảnh</span>
+              </Button>
+
+              {/* Copy Image Button */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCopyImage}
+                disabled={downloading || sharing}
+                className="w-full font-bold text-xs gap-1.5 h-10 text-slate-700 border-slate-300 hover:bg-white whitespace-nowrap"
+              >
+                {copiedImage ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="text-emerald-700">Đã copy!</span>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="w-4 h-4 text-slate-500 shrink-0" />
+                    <span>Copy</span>
+                  </>
+                )}
+              </Button>
             </div>
-          )}
+
+            {/* Quick Zalo Direct Chat Link */}
+            {formData?.leadTenant?.phone && (
+              <div className="pt-1 text-center">
+                <a
+                  href={`https://zalo.me/${formData.leadTenant.phone.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-[#0068FF] hover:underline font-semibold"
+                >
+                  <span>💬 Mở khung chat Zalo với {formData.leadTenant.name} ({formData.leadTenant.phone})</span>
+                </a>
+              </div>
+            )}
+          </div>
         </div>
+        {/* End of Right Column */}
       </div>
+      {/* End of 2-Column Grid */}
     </div>
   );
 }
