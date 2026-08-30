@@ -115,6 +115,34 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
         setWaterPrice(Number(res.existingInvoice.water_price));
         setServicePrice(Number(res.existingInvoice.service_price));
       }
+
+      // Load or infer discount
+      const invOldE = Number(res.existingInvoice.old_electric) || 0;
+      const invNewE = Number(res.existingInvoice.new_electric) || 0;
+      const invOldW = Number(res.existingInvoice.old_water) || 0;
+      const invNewW = Number(res.existingInvoice.new_water) || 0;
+      const invERate = Number(res.existingInvoice.electric_price) || 0;
+      const invWRate = Number(res.existingInvoice.water_price) || 0;
+      const invSRate = Number(res.existingInvoice.service_price) || 0;
+      const invBase = Number(res.existingInvoice.base_price) || 0;
+      const invSubtotal =
+        invBase +
+        Math.max(0, invNewE - invOldE) * invERate +
+        Math.max(0, invNewW - invOldW) * invWRate +
+        invSRate;
+
+      const rawDiscount = (res.existingInvoice as any).discount;
+      const savedDiscount =
+        rawDiscount !== undefined && rawDiscount !== null
+          ? Number(rawDiscount)
+          : Math.max(0, invSubtotal - Number(res.existingInvoice.total_amount));
+
+      setDiscount(String(savedDiscount || 0));
+      setDiscountReason(
+        (res.existingInvoice as any).discount_reason ||
+          (savedDiscount > 0 ? "Event giảm giá tháng" : "")
+      );
+
       setSavedInvoice(res.existingInvoice);
     } else {
       // Auto-fill old meters from previous reading
@@ -122,6 +150,8 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       setNewElectric(String(res.previousReading.old_electric)); // initial default
       setOldWater(String(res.previousReading.old_water));
       setNewWater(String(res.previousReading.old_water)); // initial default
+      setDiscount("0");
+      setDiscountReason("");
       setSavedInvoice(null);
     }
 

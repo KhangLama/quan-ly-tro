@@ -168,53 +168,74 @@ export async function saveInvoice(data: {
     let savedInvoice: Invoice | null = null;
     const invoiceStatus = data.status || "pending";
 
+    const basePayload: any = {
+      old_electric: Number(data.old_electric) || 0,
+      new_electric: Number(data.new_electric) || 0,
+      old_water: Number(data.old_water) || 0,
+      new_water: Number(data.new_water) || 0,
+      base_price: calculation.basePrice,
+      electric_price: Number(data.electric_price) || 0,
+      water_price: Number(data.water_price) || 0,
+      service_price: calculation.servicePrice,
+      discount: calculation.discount,
+      discount_reason: data.discount_reason || "",
+      total_amount: calculation.totalAmount,
+      status: invoiceStatus,
+      paid_at: invoiceStatus === "paid" ? new Date().toISOString() : null,
+    };
+
     if (existing) {
       // Update existing
-      const { data: updated, error } = await supabase
+      let { data: updated, error } = await supabase
         .from("invoices")
-        .update({
-          old_electric: Number(data.old_electric) || 0,
-          new_electric: Number(data.new_electric) || 0,
-          old_water: Number(data.old_water) || 0,
-          new_water: Number(data.new_water) || 0,
-          base_price: calculation.basePrice,
-          electric_price: Number(data.electric_price) || 0,
-          water_price: Number(data.water_price) || 0,
-          service_price: calculation.servicePrice,
-          total_amount: calculation.totalAmount,
-          status: invoiceStatus,
-          paid_at: invoiceStatus === "paid" ? new Date().toISOString() : null,
-        })
+        .update(basePayload)
         .eq("id", existing.id)
         .select()
         .single();
 
+      // If schema missing discount/discount_reason column (PGRST204), fallback without them
+      if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
+        const { discount: _, discount_reason: __, ...legacyPayload } = basePayload;
+        const retry = await supabase
+          .from("invoices")
+          .update(legacyPayload)
+          .eq("id", existing.id)
+          .select()
+          .single();
+        updated = retry.data;
+        error = retry.error;
+      }
+
       if (error) return { success: false, error: error.message };
-      savedInvoice = updated;
+      savedInvoice = updated ? { ...updated, discount: calculation.discount, discount_reason: data.discount_reason } : null;
     } else {
       // Insert new
-      const { data: inserted, error } = await supabase
+      const insertPayload = {
+        ...basePayload,
+        room_id: data.room_id,
+        month: data.month,
+      };
+
+      let { data: inserted, error } = await supabase
         .from("invoices")
-        .insert({
-          room_id: data.room_id,
-          month: data.month,
-          old_electric: Number(data.old_electric) || 0,
-          new_electric: Number(data.new_electric) || 0,
-          old_water: Number(data.old_water) || 0,
-          new_water: Number(data.new_water) || 0,
-          base_price: calculation.basePrice,
-          electric_price: Number(data.electric_price) || 0,
-          water_price: Number(data.water_price) || 0,
-          service_price: calculation.servicePrice,
-          total_amount: calculation.totalAmount,
-          status: invoiceStatus,
-          paid_at: invoiceStatus === "paid" ? new Date().toISOString() : null,
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
+      // If schema missing discount/discount_reason column (PGRST204), fallback without them
+      if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
+        const { discount: _, discount_reason: __, ...legacyPayload } = insertPayload;
+        const retry = await supabase
+          .from("invoices")
+          .insert(legacyPayload)
+          .select()
+          .single();
+        inserted = retry.data;
+        error = retry.error;
+      }
+
       if (error) return { success: false, error: error.message };
-      savedInvoice = inserted;
+      savedInvoice = inserted ? { ...inserted, discount: calculation.discount, discount_reason: data.discount_reason } : null;
     }
 
     safeRevalidatePath("/");

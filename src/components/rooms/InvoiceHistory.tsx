@@ -59,6 +59,18 @@ export function InvoiceHistory({
     const waterUsage = Math.max(0, Number(inv.new_water) - Number(inv.old_water));
     const electricCost = Math.round(electricUsage * Number(inv.electric_price));
     const waterCost = Math.round(waterUsage * Number(inv.water_price));
+    const basePrice = Number(inv.base_price) || 0;
+    const servicePrice = Number(inv.service_price) || 0;
+    const totalAmount = Number(inv.total_amount) || 0;
+
+    const subtotal = basePrice + electricCost + waterCost + servicePrice;
+    const rawDiscount = (inv as any).discount;
+    const discount =
+      rawDiscount !== undefined && rawDiscount !== null
+        ? Number(rawDiscount)
+        : Math.max(0, subtotal - totalAmount);
+
+    const discountReason = (inv as any).discount_reason || (discount > 0 ? "Event giảm giá tháng" : undefined);
 
     setSelectedReceipt({
       roomCode,
@@ -75,9 +87,11 @@ export function InvoiceHistory({
       waterPrice: Number(inv.water_price),
       waterCost,
       waterUsage,
-      basePrice: Number(inv.base_price),
-      servicePrice: Number(inv.service_price),
-      totalAmount: Number(inv.total_amount),
+      basePrice,
+      servicePrice,
+      discount,
+      discountReason,
+      totalAmount,
     });
   };
 

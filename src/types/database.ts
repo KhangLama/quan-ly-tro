@@ -121,6 +121,8 @@ export interface Database {
           electric_price: number;
           water_price: number;
           service_price: number;
+          discount?: number;
+          discount_reason?: string;
           total_amount: number;
           status: "pending" | "paid";
           paid_at: string | null;
@@ -138,6 +140,8 @@ export interface Database {
           electric_price?: number;
           water_price?: number;
           service_price?: number;
+          discount?: number;
+          discount_reason?: string;
           total_amount?: number;
           status?: "pending" | "paid";
           paid_at?: string | null;
@@ -155,6 +159,8 @@ export interface Database {
           electric_price?: number;
           water_price?: number;
           service_price?: number;
+          discount?: number;
+          discount_reason?: string;
           total_amount?: number;
           status?: "pending" | "paid";
           paid_at?: string | null;
