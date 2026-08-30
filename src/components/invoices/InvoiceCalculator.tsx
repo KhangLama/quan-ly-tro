@@ -93,15 +93,18 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     }
 
     if (res.existingInvoice) {
-      // If invoice already exists for this month, load its saved values
+      // If invoice already exists for this month, load its saved meter readings
       setOldElectric(String(res.existingInvoice.old_electric));
       setNewElectric(String(res.existingInvoice.new_electric));
       setOldWater(String(res.existingInvoice.old_water));
       setNewWater(String(res.existingInvoice.new_water));
       setBasePrice(Number(res.existingInvoice.base_price));
-      setElectricPrice(Number(res.existingInvoice.electric_price));
-      setWaterPrice(Number(res.existingInvoice.water_price));
-      if (res.existingInvoice.service_price !== undefined && res.existingInvoice.service_price !== null) {
+
+      // If the invoice is already paid, preserve historical rates.
+      // If pending / in progress, adopt current active settings rates!
+      if (res.existingInvoice.status === "paid") {
+        setElectricPrice(Number(res.existingInvoice.electric_price));
+        setWaterPrice(Number(res.existingInvoice.water_price));
         setServicePrice(Number(res.existingInvoice.service_price));
       }
       setSavedInvoice(res.existingInvoice);
@@ -198,7 +201,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       customerPhone: formData?.leadTenant?.phone || undefined,
       bankInfo: formData?.settings?.bank_info || undefined,
       address: formData?.settings?.address || undefined,
-      serviceDescription: formData?.settings?.service_description || undefined,
+      serviceDescription: calculation.servicePrice > 0 ? (formData?.settings?.service_description || undefined) : undefined,
       receiptNote: formData?.settings?.receipt_note || undefined,
       oldElectric: Number(oldElectric) || 0,
       newElectric: Number(newElectric) || 0,
