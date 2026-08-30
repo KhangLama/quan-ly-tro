@@ -174,7 +174,7 @@ export function SettingsForm() {
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer">
               <Shield className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Thu phí dịch vụ chung (Rác, Wifi, ...)</span>
+              <span>Thu phí dịch vụ / Chi phí khác (Mục số 4)</span>
             </label>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -216,7 +216,7 @@ export function SettingsForm() {
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Mô tả khoản phí trên biên lai (Mục số 4)
+                  Mô tả khoản chi phí khác trên biên lai (Mục số 4)
                 </label>
                 <Input
                   value={serviceDescription}

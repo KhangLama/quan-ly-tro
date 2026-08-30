@@ -163,9 +163,9 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
               </td>
             </tr>
 
-            {/* 4. Service */}
+            {/* 4. Service / Other Expenses */}
             <tr>
-              <td className="border-r border-black p-1.5 font-medium">4- Tiền dịch vụ</td>
+              <td className="border-r border-black p-1.5 font-medium">4- Chi phí khác</td>
               <td className="border-r border-black p-1.5 text-[11px] text-slate-600">
                 {data.servicePrice > 0 ? (data.serviceDescription || "") : ""}
               </td>
