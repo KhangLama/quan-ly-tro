@@ -54,7 +54,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
   // Custom rates overrides (initialized from settings)
   const [electricPrice, setElectricPrice] = useState<number>(3500);
   const [waterPrice, setWaterPrice] = useState<number>(25000);
-  const [servicePrice, setServicePrice] = useState<number>(100000);
+  const [servicePrice, setServicePrice] = useState<number>(0);
   const [basePrice, setBasePrice] = useState<number>(2500000);
 
   // Action states & feedback
@@ -76,9 +76,15 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     setFormData(res);
 
     if (res.settings) {
-      setElectricPrice(Number(res.settings.electric_price) || 3500);
-      setWaterPrice(Number(res.settings.water_price) || 25000);
-      setServicePrice(Number(res.settings.service_price) || 100000);
+      if (res.settings.electric_price !== undefined && res.settings.electric_price !== null) {
+        setElectricPrice(Number(res.settings.electric_price));
+      }
+      if (res.settings.water_price !== undefined && res.settings.water_price !== null) {
+        setWaterPrice(Number(res.settings.water_price));
+      }
+      if (res.settings.service_price !== undefined && res.settings.service_price !== null) {
+        setServicePrice(Number(res.settings.service_price));
+      }
     }
 
     if (res.selectedRoom) {
@@ -95,7 +101,9 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       setBasePrice(Number(res.existingInvoice.base_price));
       setElectricPrice(Number(res.existingInvoice.electric_price));
       setWaterPrice(Number(res.existingInvoice.water_price));
-      setServicePrice(Number(res.existingInvoice.service_price));
+      if (res.existingInvoice.service_price !== undefined && res.existingInvoice.service_price !== null) {
+        setServicePrice(Number(res.existingInvoice.service_price));
+      }
       setSavedInvoice(res.existingInvoice);
     } else {
       // Auto-fill old meters from previous reading

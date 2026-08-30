@@ -165,14 +165,16 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
             <tr>
               <td className="border-r border-black p-1.5 font-medium">4- Tiền dịch vụ</td>
               <td className="border-r border-black p-1.5 text-[11px] text-slate-600">
-                {data.serviceDescription || "Dịch vụ chung (Rác, Wifi, ...)"}
+                {data.servicePrice > 0 ? (data.serviceDescription || "") : ""}
               </td>
               <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">
-                {formatVND(data.servicePrice)} đ
+                {formatVND(data.servicePrice || 0)} đ
               </td>
-              <td className="border-r border-black p-1.5 text-center">1</td>
+              <td className="border-r border-black p-1.5 text-center">
+                {data.servicePrice > 0 ? 1 : 0}
+              </td>
               <td className="p-1.5 text-right font-bold pr-2 whitespace-nowrap">
-                {formatVND(data.servicePrice)} đ
+                {formatVND(data.servicePrice || 0)} đ
               </td>
             </tr>
 

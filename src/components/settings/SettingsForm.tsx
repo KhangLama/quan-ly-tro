@@ -12,10 +12,11 @@ import type { Setting } from "@/types";
 export function SettingsForm() {
   const [electricPrice, setElectricPrice] = useState("3500");
   const [waterPrice, setWaterPrice] = useState("25000");
-  const [servicePrice, setServicePrice] = useState("100000");
+  const [enableService, setEnableService] = useState(false);
+  const [servicePrice, setServicePrice] = useState("0");
   const [bankInfo, setBankInfo] = useState("MB Bank - 0987654321 - NGUYEN VAN A");
   const [address, setAddress] = useState("325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ");
-  const [serviceDescription, setServiceDescription] = useState("Dịch vụ chung (Rác, Wifi, ...)");
+  const [serviceDescription, setServiceDescription] = useState("");
   const [receiptNote, setReceiptNote] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -27,12 +28,16 @@ export function SettingsForm() {
     setLoading(true);
     const res = await getSettings();
     if (res.settings) {
-      setElectricPrice(String(res.settings.electric_price));
-      setWaterPrice(String(res.settings.water_price));
-      setServicePrice(String(res.settings.service_price));
+      if (res.settings.electric_price !== undefined) setElectricPrice(String(res.settings.electric_price));
+      if (res.settings.water_price !== undefined) setWaterPrice(String(res.settings.water_price));
+      if (res.settings.service_price !== undefined) {
+        const sPrice = Number(res.settings.service_price) || 0;
+        setServicePrice(String(sPrice));
+        setEnableService(sPrice > 0);
+      }
       setBankInfo(res.settings.bank_info || "");
-      if (res.settings.address) setAddress(res.settings.address);
-      if (res.settings.service_description) setServiceDescription(res.settings.service_description);
+      if (res.settings.address !== undefined) setAddress(res.settings.address || "");
+      if (res.settings.service_description !== undefined) setServiceDescription(res.settings.service_description || "");
       if (res.settings.receipt_note !== undefined) setReceiptNote(res.settings.receipt_note || "");
     }
     setLoading(false);
@@ -48,13 +53,16 @@ export function SettingsForm() {
     setErrorMsg(null);
     setSaveSuccess(false);
 
+    const finalServicePrice = enableService ? (Number(servicePrice) || 0) : 0;
+    const finalServiceDesc = enableService ? serviceDescription.trim() : "";
+
     const res = await updateSettings({
       electric_price: Number(electricPrice) || 0,
       water_price: Number(waterPrice) || 0,
-      service_price: Number(servicePrice) || 0,
+      service_price: finalServicePrice,
       bank_info: bankInfo,
       address,
-      service_description: serviceDescription,
+      service_description: finalServiceDesc,
       receipt_note: receiptNote,
     });
 
@@ -71,10 +79,11 @@ export function SettingsForm() {
   const handleResetDefaults = () => {
     setElectricPrice("3500");
     setWaterPrice("25000");
-    setServicePrice("100000");
+    setEnableService(false);
+    setServicePrice("0");
     setBankInfo("MB Bank - 0987654321 - NGUYEN VAN A");
     setAddress("325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ");
-    setServiceDescription("Dịch vụ chung (Rác, Wifi, ...)");
+    setServiceDescription("");
     setReceiptNote("");
   };
 
@@ -98,7 +107,7 @@ export function SettingsForm() {
       {saveSuccess && (
         <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-2xl flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-          <span>Đơn giá và thông tin ngân hàng đã được cập nhật thành công!</span>
+          <span>Cài đặt hệ thống và đơn giá đã được cập nhật thành công!</span>
         </div>
       )}
 
@@ -124,11 +133,11 @@ export function SettingsForm() {
               className="font-bold text-sm"
             />
             <span className="absolute right-3 top-2.5 text-xs text-slate-400">
-              đ/số
+              đ/kWh
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-1">
-            Đang áp dụng: <strong>{formatVND(Number(electricPrice) || 0)}đ</strong>/số
+            Đang áp dụng: <strong>{formatVND(Number(electricPrice) || 0)}đ</strong>/kWh
           </p>
         </div>
 
@@ -156,28 +165,68 @@ export function SettingsForm() {
           </p>
         </div>
 
-        {/* Service Rate */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Phí dịch vụ chung (VNĐ / phòng / tháng)</span>
-          </label>
-          <div className="relative">
-            <Input
-              type="number"
-              value={servicePrice}
-              onChange={(e) => setServicePrice(e.target.value)}
-              min="0"
-              required
-              className="font-bold text-sm"
-            />
-            <span className="absolute right-3 top-2.5 text-xs text-slate-400">
-              đ/tháng
-            </span>
+        {/* Service Rate Section with Toggle */}
+        <div className="pt-2 border-t border-slate-100 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer">
+              <Shield className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Thu phí dịch vụ chung (Rác, Wifi, ...)</span>
+            </label>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enableService}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setEnableService(checked);
+                  if (checked && (servicePrice === "0" || !servicePrice)) {
+                    setServicePrice("100000");
+                    if (!serviceDescription) setServiceDescription("Dịch vụ chung (Rác, Wifi, ...)");
+                  }
+                }}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+            </label>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Bao gồm rác, wifi, vệ sinh: <strong>{formatVND(Number(servicePrice) || 0)}đ</strong>/tháng
-          </p>
+
+          {enableService ? (
+            <div className="space-y-3 pl-2 border-l-2 border-emerald-500/40 mt-2">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Đơn giá dịch vụ (VNĐ / phòng / tháng)
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={servicePrice}
+                    onChange={(e) => setServicePrice(e.target.value)}
+                    min="0"
+                    required
+                    className="font-bold text-sm"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs text-slate-400">
+                    đ/tháng
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Mô tả khoản phí trên biên lai (Mục số 4)
+                </label>
+                <Input
+                  value={serviceDescription}
+                  onChange={(e) => setServiceDescription(e.target.value)}
+                  placeholder="e.g. Dịch vụ chung (Rác, Wifi, ...)"
+                  className="text-xs font-medium"
+                />
+              </div>
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-400 italic">
+              Đang tắt (0đ) — trên biên lai sẽ set về 0đ và bỏ trống mô tả.
+            </p>
+          )}
         </div>
       </Card>
 
@@ -204,19 +253,6 @@ export function SettingsForm() {
           />
         </div>
 
-        {/* Service Name / Description */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Mô tả khoản phí dịch vụ chung (Mục số 4 trên bảng biên lai)
-          </label>
-          <Input
-            value={serviceDescription}
-            onChange={(e) => setServiceDescription(e.target.value)}
-            placeholder="e.g. Dịch vụ chung (Rác, Wifi, ...)"
-            className="text-xs font-medium"
-          />
-        </div>
-
         {/* Receipt Note */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -226,7 +262,7 @@ export function SettingsForm() {
             rows={2}
             value={receiptNote}
             onChange={(e) => setReceiptNote(e.target.value)}
-            placeholder="Để trống sẽ tự động hiển thị hướng dẫn thanh toán kèm STK ngân hàng ở trên"
+            placeholder="Để trống sẽ tự động hiển thị hướng dẫn thanh toán kèm STK ngân hàng ở dưới"
             className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <p className="text-[11px] text-slate-500 mt-1">
