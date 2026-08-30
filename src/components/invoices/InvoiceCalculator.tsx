@@ -15,6 +15,8 @@ import {
   Download,
   Image as ImageIcon,
   Sparkles,
+  Tag,
+  Trash2,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +28,7 @@ import {
   getInvoiceFormData,
   saveInvoice,
   toggleInvoiceStatus,
+  deleteInvoice,
   type InvoiceFormDataResult,
 } from "@/actions/invoices";
 import { ReceiptCanvas, type ReceiptData } from "./ReceiptCanvas";
@@ -57,8 +60,13 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
   const [servicePrice, setServicePrice] = useState<number>(0);
   const [basePrice, setBasePrice] = useState<number>(2500000);
 
+  // Discount / Event
+  const [discount, setDiscount] = useState<string>("0");
+  const [discountReason, setDiscountReason] = useState<string>("");
+
   // Action states & feedback
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -135,8 +143,9 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       electricPrice,
       waterPrice,
       servicePrice,
+      discount: Number(discount) || 0,
     });
-  }, [basePrice, oldElectric, newElectric, oldWater, newWater, electricPrice, waterPrice, servicePrice]);
+  }, [basePrice, oldElectric, newElectric, oldWater, newWater, electricPrice, waterPrice, servicePrice, discount]);
 
   // Handle room change
   const handleRoomSelect = (newRoomId: string) => {
@@ -166,6 +175,8 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       electric_price: electricPrice,
       water_price: waterPrice,
       service_price: servicePrice,
+      discount: Number(discount) || 0,
+      discount_reason: discountReason.trim(),
       status,
     });
 
@@ -189,6 +200,27 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     }
   };
 
+  // Handle Delete Saved Invoice
+  const handleDeleteSavedInvoice = async () => {
+    if (!savedInvoice || !selectedRoom) return;
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn xóa vĩnh viễn hóa đơn tháng ${month} của phòng ${selectedRoom.code}?`
+    );
+    if (!confirmed) return;
+
+    setDeleting(true);
+    const res = await deleteInvoice(savedInvoice.id);
+    setDeleting(false);
+
+    if (res.success) {
+      setSavedInvoice(null);
+      setSaveSuccess(true);
+      loadData(roomId, month);
+    } else {
+      setErrorMsg(res.error || "Không thể xóa hóa đơn");
+    }
+  };
+
   // Build live receipt data
   const selectedRoom = formData?.rooms.find((r) => r.id === roomId);
 
@@ -201,7 +233,10 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       customerPhone: formData?.leadTenant?.phone || undefined,
       bankInfo: formData?.settings?.bank_info || undefined,
       address: formData?.settings?.address || undefined,
-      serviceDescription: calculation.servicePrice > 0 ? (formData?.settings?.service_description || undefined) : undefined,
+      serviceDescription:
+        calculation.servicePrice > 0
+          ? formData?.settings?.service_description || undefined
+          : undefined,
       receiptNote: formData?.settings?.receipt_note || undefined,
       oldElectric: Number(oldElectric) || 0,
       newElectric: Number(newElectric) || 0,
@@ -215,6 +250,8 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       waterUsage: calculation.waterUsage,
       basePrice: calculation.basePrice,
       servicePrice: calculation.servicePrice,
+      discount: calculation.discount,
+      discountReason: discountReason.trim() || undefined,
       totalAmount: calculation.totalAmount,
     };
   }, [
@@ -228,6 +265,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     newWater,
     waterPrice,
     calculation,
+    discountReason,
   ]);
 
   // Handle Share: Share ONLY the image file
@@ -341,13 +379,13 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       {saveSuccess && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>Hóa đơn phòng {selectedRoom?.code} đã được lưu thành công!</span>
+          <span>Thao tác hóa đơn phòng {selectedRoom?.code} thành công!</span>
         </div>
       )}
 
       {/* Invoice Status Banner if already exists */}
       {savedInvoice && (
-        <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between">
+        <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-indigo-900">
               Trạng thái:
@@ -356,14 +394,26 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
               {savedInvoice.status === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
             </Badge>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleToggleStatus}
-            className="text-[11px] h-7 bg-white whitespace-nowrap"
-          >
-            Đánh dấu {savedInvoice.status === "paid" ? "Chưa thu" : "Đã thu"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleToggleStatus}
+              className="text-[11px] h-7 bg-white whitespace-nowrap"
+            >
+              Đánh dấu {savedInvoice.status === "paid" ? "Chưa thu" : "Đã thu"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDeleteSavedInvoice}
+              disabled={deleting}
+              className="text-[11px] h-7 bg-white text-rose-600 border-rose-200 hover:bg-rose-50 whitespace-nowrap gap-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{deleting ? "Đang xóa..." : "Xóa"}</span>
+            </Button>
+          </div>
         </div>
       )}
 
@@ -514,6 +564,78 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
         <div className="bg-slate-50 p-2.5 rounded-xl flex items-center justify-between text-xs text-slate-600">
           <span>{calculation.waterUsage} m³ × {formatVND(waterPrice)}đ</span>
           <strong className="text-slate-900 font-bold">{formatVND(calculation.waterCost)}đ</strong>
+        </div>
+      </Card>
+
+      {/* Card 4: Discount / Promotional Event */}
+      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Tag className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Ưu đãi / Giảm giá (Tùy chọn)</span>
+          </h2>
+          {Number(discount) > 0 && (
+            <Badge variant="success" size="sm">
+              Giảm -{formatVND(Number(discount))}đ
+            </Badge>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              Số tiền giảm (VNĐ)
+            </label>
+            <div className="relative">
+              <Input
+                type="number"
+                value={discount}
+                onChange={(e) => setDiscount(e.target.value)}
+                min="0"
+                placeholder="0"
+                className="font-bold text-sm text-emerald-700 bg-emerald-50/30 border-emerald-200 focus:border-emerald-500"
+              />
+              <span className="absolute right-3 top-2.5 text-xs text-slate-400">
+                đ
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              Lý do giảm (Hiển thị trên biên lai)
+            </label>
+            <Input
+              value={discountReason}
+              onChange={(e) => setDiscountReason(e.target.value)}
+              placeholder="e.g. Event sinh viên, Khuyến mãi tháng"
+              className="text-xs"
+            />
+          </div>
+        </div>
+
+        {/* Quick Presets */}
+        <div className="flex items-center gap-1.5 flex-wrap pt-1">
+          <span className="text-[11px] text-slate-400 font-medium mr-1">Nhanh:</span>
+          {["0", "50000", "100000", "200000", "500000"].map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              onClick={() => {
+                setDiscount(preset);
+                if (preset !== "0" && !discountReason) {
+                  setDiscountReason("Event giảm giá tháng");
+                }
+              }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                discount === preset
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+              }`}
+            >
+              {preset === "0" ? "0đ" : `-${formatVND(Number(preset))}đ`}
+            </button>
+          ))}
         </div>
       </Card>
 

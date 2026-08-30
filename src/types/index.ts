@@ -39,6 +39,7 @@ export interface CalculationInput {
   electricPrice: number;
   waterPrice: number;
   servicePrice: number;
+  discount?: number;
 }
 
 export interface CalculationResult {
@@ -48,6 +49,7 @@ export interface CalculationResult {
   waterCost: number;
   servicePrice: number;
   basePrice: number;
+  discount: number;
   totalAmount: number;
 }
 

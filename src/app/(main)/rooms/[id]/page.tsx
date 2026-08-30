@@ -222,6 +222,7 @@ export default function RoomDetailPage() {
           roomCode={room.code}
           customerName={leadTenant?.name || undefined}
           customerPhone={leadTenant?.phone || undefined}
+          onRefresh={fetchDetails}
         />
       </div>
 

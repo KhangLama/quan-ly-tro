@@ -134,6 +134,8 @@ export async function saveInvoice(data: {
   electric_price: number;
   water_price: number;
   service_price: number;
+  discount?: number;
+  discount_reason?: string;
   status?: "pending" | "paid";
 }): Promise<SaveInvoiceResult> {
   try {
@@ -150,6 +152,7 @@ export async function saveInvoice(data: {
       electricPrice: Number(data.electric_price) || 0,
       waterPrice: Number(data.water_price) || 0,
       servicePrice: Number(data.service_price) || 0,
+      discount: Number(data.discount) || 0,
     });
 
     const supabase = await createClient();
@@ -262,6 +265,7 @@ export async function toggleInvoiceStatus(invoiceId: string): Promise<SaveInvoic
     safeRevalidatePath("/");
     safeRevalidatePath("/rooms");
     safeRevalidatePath(`/rooms/${invoice.room_id}`);
+    safeRevalidatePath("/invoices/new");
 
     return { success: true, invoice: updated ?? undefined };
   } catch (err: any) {
@@ -275,11 +279,16 @@ export async function toggleInvoiceStatus(invoiceId: string): Promise<SaveInvoic
 export async function deleteInvoice(invoiceId: string): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient();
+    const { data: invoice } = await supabase.from("invoices").select("room_id").eq("id", invoiceId).maybeSingle();
     const { error } = await supabase.from("invoices").delete().eq("id", invoiceId);
     if (error) return { success: false, error: error.message };
 
     safeRevalidatePath("/");
     safeRevalidatePath("/rooms");
+    if (invoice?.room_id) {
+      safeRevalidatePath(`/rooms/${invoice.room_id}`);
+    }
+    safeRevalidatePath("/invoices/new");
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message || "Lỗi khi xóa hóa đơn" };

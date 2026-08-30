@@ -142,4 +142,41 @@ describe("Unit Test: Electricity, Water & Grand Total Calculations", () => {
       expect(res.waterUsage).toBe(newW - oldW);
     }
   });
+
+  it("accurately applies promotional discount and deducts from grand total", () => {
+    const input: CalculationInput = {
+      basePrice: 3000000,
+      oldElectric: 100,
+      newElectric: 200, // 100 kWh * 4000 = 400,000
+      oldWater: 20,
+      newWater: 30, // 10 m3 * 15000 = 150,000
+      electricPrice: 4000,
+      waterPrice: 15000,
+      servicePrice: 50000,
+      discount: 200000, // Event discount 200k
+    };
+
+    const result = calculateInvoice(input);
+    expect(result.discount).toBe(200000);
+    // Subtotal: 3,000,000 + 400,000 + 150,000 + 50,000 = 3,600,000
+    // Grand total: 3,600,000 - 200,000 = 3,400,000
+    expect(result.totalAmount).toBe(3400000);
+  });
+
+  it("clamps grand total to zero if discount exceeds the total invoice amount", () => {
+    const input: CalculationInput = {
+      basePrice: 1000000,
+      oldElectric: 0,
+      newElectric: 0,
+      oldWater: 0,
+      newWater: 0,
+      electricPrice: 3500,
+      waterPrice: 25000,
+      servicePrice: 0,
+      discount: 2000000, // Discount greater than subtotal
+    };
+
+    const result = calculateInvoice(input);
+    expect(result.totalAmount).toBe(0);
+  });
 });

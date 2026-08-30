@@ -23,6 +23,8 @@ export interface ReceiptData {
   waterUsage: number;
   basePrice: number;
   servicePrice: number;
+  discount?: number;
+  discountReason?: string;
   totalAmount: number;
 }
 
@@ -177,6 +179,23 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                 {formatVND(data.servicePrice || 0)} đ
               </td>
             </tr>
+
+            {/* 5. Discount if any */}
+            {data.discount !== undefined && data.discount > 0 && (
+              <tr className="bg-emerald-50/70">
+                <td className="border-r border-black p-1.5 font-bold text-emerald-800">5- Giảm giá / Ưu đãi</td>
+                <td className="border-r border-black p-1.5 text-[11px] text-emerald-800 italic">
+                  {data.discountReason || "Khuyến mãi / Event giảm giá"}
+                </td>
+                <td className="border-r border-black p-1.5 text-right font-bold text-emerald-700 whitespace-nowrap">
+                  -{formatVND(data.discount)} đ
+                </td>
+                <td className="border-r border-black p-1.5 text-center font-bold text-emerald-700">1</td>
+                <td className="p-1.5 text-right font-bold text-emerald-700 pr-2 whitespace-nowrap">
+                  -{formatVND(data.discount)} đ
+                </td>
+              </tr>
+            )}
 
             {/* TOTAL ROW */}
             <tr className="border-t-2 border-black font-extrabold text-[13px]">

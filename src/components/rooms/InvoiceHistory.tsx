@@ -2,11 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { FileText, Download, Sparkles, Image as ImageIcon } from "lucide-react";
+import { FileText, Download, Sparkles, Image as ImageIcon, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ReceiptModal, type ReceiptData } from "@/components/invoices/ReceiptModal";
+import { deleteInvoice } from "@/actions/invoices";
 import { formatVND } from "@/lib/utils";
 import type { Invoice } from "@/types";
 
@@ -15,10 +16,18 @@ interface InvoiceHistoryProps {
   roomCode: string;
   customerName?: string;
   customerPhone?: string;
+  onRefresh?: () => void;
 }
 
-export function InvoiceHistory({ invoices, roomCode, customerName, customerPhone }: InvoiceHistoryProps) {
+export function InvoiceHistory({
+  invoices,
+  roomCode,
+  customerName,
+  customerPhone,
+  onRefresh,
+}: InvoiceHistoryProps) {
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   if (invoices.length === 0) {
     return (
@@ -27,6 +36,23 @@ export function InvoiceHistory({ invoices, roomCode, customerName, customerPhone
       </div>
     );
   }
+
+  const handleDelete = async (inv: Invoice) => {
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn xóa vĩnh viễn hóa đơn tháng ${inv.month} của phòng ${roomCode}?`
+    );
+    if (!confirmed) return;
+
+    setDeletingId(inv.id);
+    const res = await deleteInvoice(inv.id);
+    setDeletingId(null);
+
+    if (res.success) {
+      onRefresh?.();
+    } else {
+      alert(res.error || "Không thể xóa hóa đơn");
+    }
+  };
 
   const handleOpenReceipt = (inv: Invoice) => {
     const electricUsage = Math.max(0, Number(inv.new_electric) - Number(inv.old_electric));
@@ -86,12 +112,23 @@ export function InvoiceHistory({ invoices, roomCode, customerName, customerPhone
               </div>
 
               {/* Action row */}
-              <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-end">
+              <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleDelete(inv)}
+                  disabled={deletingId === inv.id}
+                  className="gap-1 text-[11px] text-rose-600 border-rose-200 hover:bg-rose-50 py-1 h-7"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{deletingId === inv.id ? "Đang xóa..." : "Xóa"}</span>
+                </Button>
+
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => handleOpenReceipt(inv)}
-                  className="gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50 py-1 h-auto"
+                  className="gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50 py-1 h-7 whitespace-nowrap"
                 >
                   <ImageIcon className="w-3.5 h-3.5" />
                   <span>Xem & Tải ảnh biên lai</span>
