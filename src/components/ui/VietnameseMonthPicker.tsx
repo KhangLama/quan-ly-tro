@@ -36,14 +36,14 @@ export function VietnameseMonthPicker({
   const year = parseInt(yearStr, 10) || currentYear;
   const month = parseInt(monthStr, 10) || (new Date().getMonth() + 1);
 
-  // Years list: current year - 2 to current year + 2 (e.g. 2024, 2025, 2026, 2027, 2028)
-  const years = [
-    currentYear - 2,
-    currentYear - 1,
-    currentYear,
-    currentYear + 1,
-    currentYear + 2,
-  ];
+  // Dynamically compute years range around current real-time year and currently selected year
+  const baseYear = new Date().getFullYear();
+  const minYear = Math.min(baseYear - 3, year - 2);
+  const maxYear = Math.max(baseYear + 3, year + 2);
+  const years: number[] = [];
+  for (let y = minYear; y <= maxYear; y++) {
+    years.push(y);
+  }
 
   const handleMonthChange = (newMonthNum: number) => {
     const formatted = `${year}-${String(newMonthNum).padStart(2, "0")}`;
