@@ -68,6 +68,11 @@ export interface DashboardStats {
   rentedRooms: number;
   emptyRooms: number;
   occupancyRate: number;
+  totalExpenses: number;
+  paidExpenses: number;
+  pendingExpenses: number;
+  netProfit: number;
+  actualCashflow: number;
 }
 
 // Zalo template parameter type

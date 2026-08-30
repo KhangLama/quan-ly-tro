@@ -27,11 +27,12 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
     const currentMonth = month || new Date().toISOString().substring(0, 7);
     const supabase = await createClient();
 
-    // Fetch rooms, active tenants, and invoices in parallel for maximum speed
+    // Fetch rooms, active tenants, invoices, and expenses in parallel for maximum speed
     const [
       { data: roomsData, error: roomsError },
       { data: tenantsData },
       { data: invoicesData },
+      { data: expensesData },
     ] = await Promise.all([
       supabase.from("rooms").select("*").order("code", { ascending: true }),
       supabase
@@ -40,6 +41,7 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
         .eq("status", "active")
         .order("created_at", { ascending: true }),
       supabase.from("invoices").select("*").eq("month", currentMonth),
+      supabase.from("expenses").select("*").eq("month", currentMonth),
     ]);
 
     if (roomsError) {
@@ -53,6 +55,11 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
           rentedRooms: 0,
           emptyRooms: 0,
           occupancyRate: 0,
+          totalExpenses: 0,
+          paidExpenses: 0,
+          pendingExpenses: 0,
+          netProfit: 0,
+          actualCashflow: 0,
         },
         rooms: [],
         error: roomsError.message,
@@ -62,8 +69,9 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
     const rooms: Room[] = roomsData || [];
     const allTenants: Tenant[] = tenantsData || [];
     const invoices: Invoice[] = invoicesData || [];
+    const expenses: any[] = expensesData || [];
 
-    // Compute financial KPIs
+    // Compute financial income KPIs
     let totalRevenue = 0;
     let collectedAmount = 0;
     let pendingAmount = 0;
@@ -77,6 +85,24 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
         pendingAmount += amt;
       }
     }
+
+    // Compute expenses KPIs
+    let totalExpenses = 0;
+    let paidExpenses = 0;
+    let pendingExpenses = 0;
+
+    for (const exp of expenses) {
+      const amt = Number(exp.total_amount) || 0;
+      totalExpenses += amt;
+      if (exp.status === "paid") {
+        paidExpenses += amt;
+      } else {
+        pendingExpenses += amt;
+      }
+    }
+
+    const netProfit = totalRevenue - totalExpenses;
+    const actualCashflow = collectedAmount - paidExpenses;
 
     // Compute room occupancy based on actual active tenants
     const totalRooms = rooms.length;
@@ -138,6 +164,11 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
         rentedRooms,
         emptyRooms,
         occupancyRate,
+        totalExpenses,
+        paidExpenses,
+        pendingExpenses,
+        netProfit,
+        actualCashflow,
       },
       rooms: roomCards,
     };
@@ -152,6 +183,11 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
         rentedRooms: 0,
         emptyRooms: 0,
         occupancyRate: 0,
+        totalExpenses: 0,
+        paidExpenses: 0,
+        pendingExpenses: 0,
+        netProfit: 0,
+        actualCashflow: 0,
       },
       rooms: [],
       error: err.message || "Lỗi khi tải dữ liệu tổng quan",
