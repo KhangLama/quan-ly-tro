@@ -10,12 +10,10 @@ import {
   Printer,
   Copy,
   Check,
-  Building2,
-  ChevronDown,
-  ChevronUp,
-  Settings,
+  Calendar,
   Eye,
   Sliders,
+  RotateCcw,
 } from "lucide-react";
 import type { Room, Tenant, Setting } from "@/types";
 
@@ -38,7 +36,7 @@ export function RoomContractModal({
   const [tab, setTab] = useState<"preview" | "config">("preview");
   const [copied, setCopied] = useState(false);
 
-  // Contract Date
+  // Contract Date (Ngày ký hợp đồng)
   const today = new Date();
   const [contractDay, setContractDay] = useState(String(today.getDate()).padStart(2, "0"));
   const [contractMonth, setContractMonth] = useState(String(today.getMonth() + 1).padStart(2, "0"));
@@ -115,6 +113,11 @@ export function RoomContractModal({
       if (leadTenant.start_date) {
         const d = new Date(leadTenant.start_date);
         if (!isNaN(d.getTime())) {
+          // Align contract signing date to tenant start date by default
+          setContractDay(String(d.getDate()).padStart(2, "0"));
+          setContractMonth(String(d.getMonth() + 1).padStart(2, "0"));
+          setContractYear(String(d.getFullYear()));
+
           const sDateStr = `${String(d.getDate()).padStart(2, "0")}/${String(
             d.getMonth() + 1
           ).padStart(2, "0")}/${d.getFullYear()}`;
@@ -145,7 +148,6 @@ export function RoomContractModal({
 
     // Bank parsing
     if (settings?.bank_info) {
-      // Format usually: "Bank - STK - Tên" or similar
       const parts = settings.bank_info.split("-").map((s) => s.trim());
       if (parts.length >= 3) {
         setBankName(parts[0]);
@@ -190,8 +192,11 @@ export function RoomContractModal({
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleSetToday = () => {
+    const now = new Date();
+    setContractDay(String(now.getDate()).padStart(2, "0"));
+    setContractMonth(String(now.getMonth() + 1).padStart(2, "0"));
+    setContractYear(String(now.getFullYear()));
   };
 
   const contractRef = useRef<HTMLDivElement>(null);
@@ -208,6 +213,119 @@ export function RoomContractModal({
     }
   };
 
+  // Robust isolated iframe printing that never gets clipped by modals or page overflow
+  const handlePrint = () => {
+    const printContent = contractRef.current?.innerHTML;
+    if (!printContent) return;
+
+    let iframe = document.getElementById("contract-print-iframe") as HTMLIFrameElement;
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.id = "contract-print-iframe";
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Hợp đồng thuê phòng - Phòng ${room.code}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 18mm 16mm 18mm 16mm;
+            }
+            * {
+              box-sizing: border-box;
+            }
+            html, body {
+              width: 100%;
+              margin: 0;
+              padding: 0;
+              background: #fff;
+              color: #000;
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 13pt;
+              line-height: 1.45;
+            }
+            p, div {
+              margin: 0;
+              padding: 0;
+            }
+            .text-center { text-align: center; }
+            .text-justify { text-align: justify; text-justify: inter-word; }
+            .font-bold { font-weight: bold; }
+            .font-semibold { font-weight: 600; }
+            .italic { font-style: italic; }
+            .uppercase { text-transform: uppercase; }
+            .underline { text-decoration: underline; }
+            .avoid-break {
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+            .space-y-1 > * + * { margin-top: 4px; }
+            .space-y-1-5 > * + * { margin-top: 6px; }
+            .space-y-2 > * + * { margin-top: 8px; }
+            .pl-3 { padding-left: 14px; }
+            .pl-4 { padding-left: 20px; }
+            .my-2 { margin-top: 8px; margin-bottom: 8px; }
+            .my-4 { margin-top: 14px; margin-bottom: 14px; }
+            .my-6 { margin-top: 18px; margin-bottom: 18px; }
+            .mb-2 { margin-bottom: 8px; }
+            .mb-4 { margin-bottom: 14px; }
+            .mb-6 { margin-bottom: 20px; }
+            .pt-1 { padding-top: 4px; }
+            .pt-2 { padding-top: 8px; }
+            .pt-4 { padding-top: 16px; }
+            .bank-box {
+              border: 1px solid #111;
+              padding: 8px 12px;
+              margin: 8px 0;
+              border-radius: 4px;
+              background-color: #fafafa;
+            }
+            .signatures-container {
+              display: table;
+              width: 100%;
+              margin-top: 24px;
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+            .signature-col {
+              display: table-cell;
+              width: 50%;
+              text-align: center;
+              vertical-align: top;
+            }
+            .signature-space {
+              height: 90px;
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    }, 300);
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -218,11 +336,11 @@ export function RoomContractModal({
           <span>Hợp đồng thuê phòng - Phòng {room.code}</span>
         </div>
       }
-      description="Xem trước, tùy chỉnh và in ấn bản hợp đồng thuê trọ chuẩn pháp lý"
+      description="Xem trước, tùy chỉnh ngày ký và in ấn bản hợp đồng thuê trọ chuẩn pháp lý"
       size="3xl"
     >
       {/* Action Header & Tabs */}
-      <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3 mb-4 flex-wrap">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3 mb-3 flex-wrap">
         <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
           <button
             type="button"
@@ -246,7 +364,7 @@ export function RoomContractModal({
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>Chỉnh sửa thông tin hợp đồng</span>
+            <span>Chỉnh sửa thông tin chi tiết</span>
           </button>
         </div>
 
@@ -281,9 +399,64 @@ export function RoomContractModal({
         </div>
       </div>
 
+      {/* Quick Contract Date Toolbar (Cho phép sửa ngày ký hợp đồng ngay tức thì) */}
+      <div className="mb-3 p-2.5 bg-indigo-50/80 border border-indigo-200/80 rounded-2xl flex items-center justify-between gap-3 flex-wrap text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-bold text-indigo-950 flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>Chỉnh sửa Ngày ký hợp đồng:</span>
+          </span>
+          <div className="flex items-center gap-1">
+            <span className="text-slate-600">Ngày</span>
+            <input
+              type="text"
+              maxLength={2}
+              value={contractDay}
+              onChange={(e) => setContractDay(e.target.value)}
+              className="w-9 h-7 text-center font-bold text-indigo-900 bg-white border border-indigo-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+            />
+            <span className="text-slate-600">tháng</span>
+            <input
+              type="text"
+              maxLength={2}
+              value={contractMonth}
+              onChange={(e) => setContractMonth(e.target.value)}
+              className="w-9 h-7 text-center font-bold text-indigo-900 bg-white border border-indigo-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+            />
+            <span className="text-slate-600">năm</span>
+            <input
+              type="text"
+              maxLength={4}
+              value={contractYear}
+              onChange={(e) => setContractYear(e.target.value)}
+              className="w-14 h-7 text-center font-bold text-indigo-900 bg-white border border-indigo-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSetToday}
+            className="text-[11px] text-indigo-700 bg-white hover:bg-indigo-100 border border-indigo-200 px-2 py-1 rounded-lg font-bold transition-colors"
+          >
+            Hôm nay
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+          <span>Địa điểm:</span>
+          <input
+            type="text"
+            value={innName}
+            onChange={(e) => setInnName(e.target.value)}
+            className="h-7 px-2 font-medium text-slate-800 bg-white border border-indigo-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+            placeholder="Nhà trọ Trúc Lam"
+          />
+        </div>
+      </div>
+
       {/* Tab 1: Config Form */}
       {tab === "config" && (
-        <div className="space-y-6 max-h-[72vh] overflow-y-auto pr-1">
+        <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
           {/* Section: Bên A */}
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
             <div className="flex items-center justify-between">
@@ -535,38 +708,37 @@ export function RoomContractModal({
         </div>
       )}
 
-      {/* Tab 2: Document Preview (A4 Printable Document) */}
+      {/* Tab 2: Document Preview */}
       {tab === "preview" && (
-        <div className="max-h-[75vh] overflow-y-auto p-2 bg-slate-200/70 rounded-2xl">
-          {/* A4 Container */}
+        <div className="max-h-[65vh] overflow-y-auto p-2 bg-slate-100 rounded-2xl border border-slate-200">
+          {/* Printable contract container */}
           <div
             ref={contractRef}
-            id="printable-contract"
-            className="max-w-[800px] mx-auto bg-white p-8 sm:p-14 shadow-md rounded-lg text-slate-900 font-serif leading-relaxed text-[13.5px] print:shadow-none print:m-0 print:p-8 print:max-w-none print:w-full print:rounded-none"
+            className="max-w-[760px] mx-auto bg-white p-8 sm:p-12 shadow-sm rounded-lg text-slate-900 leading-relaxed text-[13pt]"
             style={{ fontFamily: "'Times New Roman', Times, serif" }}
           >
             {/* Header: Quốc hiệu & Tiêu ngữ */}
             <div className="text-center space-y-1 mb-6">
-              <h2 className="font-bold text-sm tracking-wide uppercase">
+              <p className="font-bold text-sm tracking-wide uppercase">
                 CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
-              </h2>
+              </p>
               <p className="font-bold text-xs underline underline-offset-4">
                 Độc lập – Tự do – Hạnh phúc
               </p>
-              <p className="text-xs italic tracking-widest text-slate-600 pt-0.5">
+              <p className="text-xs italic tracking-widest text-slate-500 pt-0.5">
                 -----ooo0ooo-----
               </p>
             </div>
 
             {/* Contract Title */}
             <div className="text-center my-6">
-              <h1 className="text-lg sm:text-xl font-bold uppercase tracking-wide">
+              <p className="text-lg sm:text-xl font-bold uppercase tracking-wide">
                 HỢP ĐỒNG CHO THUÊ PHÒNG TRỌ
-              </h1>
+              </p>
             </div>
 
             {/* Legal grounds */}
-            <div className="space-y-1 text-justify mb-4 italic text-[13px]">
+            <div className="space-y-1 text-justify mb-4 italic text-[12.5pt]">
               <p>Căn cứ bộ luật dân sự, luật đất đai của nước Cộng Hòa Xã Hội Chủ Nghĩa Việt Nam.</p>
               <p>Căn cứ vào điều kiện và nhu cầu thực tế của các bên trong hợp đồng này.</p>
               <p className="not-italic pt-1">
@@ -652,7 +824,7 @@ export function RoomContractModal({
                 <p>
                   - Hình thức thanh toán: Tiền mặt hoặc chuyển khoản vào thông tin sau:
                 </p>
-                <div className="my-2 p-2 border border-black/80 rounded bg-slate-50/50">
+                <div className="bank-box my-2 p-2.5 border border-black rounded">
                   <p>Họ và Tên: <strong>{bankOwner}</strong></p>
                   <p>Số tài khoản: <strong>{bankAccount || "...................................."}</strong> tại Ngân hàng <strong>{bankName || "...................................."}</strong></p>
                 </div>
@@ -740,49 +912,23 @@ export function RoomContractModal({
             </div>
 
             {/* Signatures */}
-            <div className="grid grid-cols-2 text-center pt-4 pb-12 gap-8 font-serif">
-              <div className="space-y-1">
+            <div className="signatures-container avoid-break pt-4 pb-12 font-serif">
+              <div className="signature-col">
                 <p className="font-bold uppercase text-sm">Bên A</p>
                 <p className="text-xs italic text-slate-500">(ký, ghi rõ họ tên)</p>
-                <div className="h-20" />
+                <div className="signature-space" />
                 <p className="font-bold">{partyAName}</p>
               </div>
-              <div className="space-y-1">
+              <div className="signature-col">
                 <p className="font-bold uppercase text-sm">Bên B</p>
                 <p className="text-xs italic text-slate-500">(ký, ghi rõ họ tên)</p>
-                <div className="h-20" />
+                <div className="signature-space" />
                 <p className="font-bold">{partyBName || "...................................."}</p>
               </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Global Print Style for clean A4 printing */}
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #printable-contract,
-          #printable-contract * {
-            visibility: visible;
-          }
-          #printable-contract {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 15mm 20mm !important;
-            box-shadow: none !important;
-            background: white !important;
-            font-size: 13pt !important;
-            line-height: 1.5 !important;
-          }
-        }
-      `}</style>
     </Modal>
   );
 }
