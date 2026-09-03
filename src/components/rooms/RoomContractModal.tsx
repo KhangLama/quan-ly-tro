@@ -218,10 +218,20 @@ export function RoomContractModal({
     }
   };
 
+  const tenantName = partyBName.trim() || leadTenant?.name?.trim() || "Khách thuê";
+  const roomLabel = room.code.toLowerCase().startsWith("p") ? room.code : `Phòng ${room.code}`;
+  const contractFileName = `HĐPT - ${roomLabel} - ${tenantName}`;
+
   // Pure multi-page A4 print without browser headers or footers
   const handlePrint = () => {
     const printContent = contractRef.current?.innerHTML;
     if (!printContent) return;
+
+    // Set document title temporarily so browser defaults to this exact filename when saving PDF
+    const originalDocTitle = typeof document !== "undefined" ? document.title : "";
+    if (typeof document !== "undefined") {
+      document.title = contractFileName;
+    }
 
     let iframe = document.getElementById("contract-print-iframe") as HTMLIFrameElement;
     if (!iframe) {
@@ -245,7 +255,7 @@ export function RoomContractModal({
       <html>
         <head>
           <meta charset="utf-8" />
-          <title> </title>
+          <title>${contractFileName}</title>
           <style>
             @page {
               size: A4 portrait;
@@ -343,6 +353,11 @@ export function RoomContractModal({
     setTimeout(() => {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
+      setTimeout(() => {
+        if (typeof document !== "undefined" && originalDocTitle) {
+          document.title = originalDocTitle;
+        }
+      }, 6000);
     }, 300);
   };
 
@@ -838,7 +853,7 @@ export function RoomContractModal({
       title={
         <div className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-indigo-600" />
-          <span>Hợp đồng thuê phòng - Phòng {room.code}</span>
+          <span className="font-bold text-slate-900">{contractFileName}</span>
         </div>
       }
       description="Xem trước, tùy chỉnh trực tiếp và in ấn bản hợp đồng thuê trọ chuẩn A4 pháp lý"
@@ -916,7 +931,14 @@ export function RoomContractModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+              <span className="font-semibold text-slate-600">Tên file khi lưu:</span>
+              <span className="font-bold text-indigo-900 font-mono text-[11px] max-w-[260px] truncate" title={`${contractFileName}.pdf`}>
+                {contractFileName}.pdf
+              </span>
+            </div>
+
             <Button
               type="button"
               variant="outline"
