@@ -9,8 +9,9 @@ import { InvoiceCalculator } from "@/components/invoices/InvoiceCalculator";
 function InvoiceContent() {
   const searchParams = useSearchParams();
   const roomId = searchParams.get("roomId") || undefined;
+  const month = searchParams.get("month") || undefined;
 
-  return <InvoiceCalculator initialRoomId={roomId} />;
+  return <InvoiceCalculator initialRoomId={roomId} initialMonth={month} />;
 }
 
 export default function NewInvoicePage() {

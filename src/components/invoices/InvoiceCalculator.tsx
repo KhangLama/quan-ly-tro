@@ -17,6 +17,7 @@ import {
   Sparkles,
   Tag,
   Trash2,
+  FileText,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -38,12 +39,13 @@ import type { Invoice } from "@/types";
 
 interface InvoiceCalculatorProps {
   initialRoomId?: string;
+  initialMonth?: string;
 }
 
-export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
+export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalculatorProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [month, setMonth] = useState<string>(
-    new Date().toISOString().substring(0, 7)
+    initialMonth || new Date().toISOString().substring(0, 7)
   );
   const [roomId, setRoomId] = useState<string>(initialRoomId || "");
   const [formData, setFormData] = useState<InvoiceFormDataResult | null>(null);
@@ -64,6 +66,9 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
   // Discount / Event
   const [discount, setDiscount] = useState<string>("0");
   const [discountReason, setDiscountReason] = useState<string>("");
+
+  // Invoice Note (Ghi chú riêng của hóa đơn)
+  const [customNote, setCustomNote] = useState<string>("");
 
   // Action states & feedback
   const [saving, setSaving] = useState(false);
@@ -145,10 +150,18 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
         } catch {}
       }
 
+      let savedNote = (res.existingInvoice as any).note || (res.existingInvoice as any).receipt_note;
+      if (!savedNote && typeof window !== "undefined") {
+        try {
+          savedNote = localStorage.getItem(`inv_note_${targetRoomId}_${targetMonth}`);
+        } catch {}
+      }
+
       setDiscount(String(savedDiscount || 0));
       setDiscountReason(
         savedReason || (savedDiscount > 0 ? "Event giảm giá tháng" : "")
       );
+      setCustomNote(savedNote || "");
 
       setSavedInvoice(res.existingInvoice);
     } else {
@@ -159,6 +172,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       setNewWater(String(res.previousReading.old_water)); // initial default
       setDiscount("0");
       setDiscountReason("");
+      setCustomNote("");
       setSavedInvoice(null);
     }
 
@@ -214,6 +228,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       service_price: servicePrice,
       discount: Number(discount) || 0,
       discount_reason: discountReason.trim(),
+      note: customNote.trim(),
       status,
     });
 
@@ -226,6 +241,11 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
             localStorage.setItem(`inv_reason_${roomId}_${month}`, discountReason.trim());
           } else {
             localStorage.removeItem(`inv_reason_${roomId}_${month}`);
+          }
+          if (customNote.trim()) {
+            localStorage.setItem(`inv_note_${roomId}_${month}`, customNote.trim());
+          } else {
+            localStorage.removeItem(`inv_note_${roomId}_${month}`);
           }
         } catch {}
       }
@@ -262,6 +282,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
       if (typeof window !== "undefined") {
         try {
           localStorage.removeItem(`inv_reason_${roomId}_${month}`);
+          localStorage.removeItem(`inv_note_${roomId}_${month}`);
         } catch {}
       }
       setSavedInvoice(null);
@@ -288,7 +309,8 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
         calculation.servicePrice > 0
           ? formData?.settings?.service_description || undefined
           : undefined,
-      receiptNote: formData?.settings?.receipt_note || undefined,
+      receiptNote:
+        customNote.trim() || formData?.settings?.receipt_note || undefined,
       oldElectric: Number(oldElectric) || 0,
       newElectric: Number(newElectric) || 0,
       electricPrice,
@@ -317,6 +339,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
     waterPrice,
     calculation,
     discountReason,
+    customNote,
   ]);
 
   // Handle Share: Share ONLY the image file
@@ -436,13 +459,14 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
 
       {/* Invoice Status Banner if already exists */}
       {savedInvoice && (
-        <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between gap-2 flex-wrap">
+        <div className="p-3 bg-indigo-50/90 border border-indigo-200 rounded-2xl flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-indigo-900">
-              Trạng thái:
+            <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+              Đang chỉnh sửa hóa đơn tháng {month} (Phòng {selectedRoom?.code}):
             </span>
             <Badge variant={savedInvoice.status === "paid" ? "success" : "warning"}>
-              {savedInvoice.status === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+              {savedInvoice.status === "paid" ? "Đã thu" : "Chưa thu"}
             </Badge>
           </div>
           <div className="flex items-center gap-2">
@@ -694,6 +718,36 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
           ))}
         </div>
       </Card>
+
+      {/* Card 5: Invoice Note (Ghi chú hóa đơn) */}
+      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-2.5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Ghi chú hóa đơn (Hiển thị trên biên lai)</span>
+          </h2>
+          {customNote && (
+            <button
+              type="button"
+              onClick={() => setCustomNote("")}
+              className="text-[11px] text-slate-400 hover:text-rose-500 transition-colors"
+            >
+              Đặt về mặc định
+            </button>
+          )}
+        </div>
+
+        <textarea
+          rows={2}
+          value={customNote}
+          onChange={(e) => setCustomNote(e.target.value)}
+          placeholder={formData?.settings?.receipt_note || "Nhập ghi chú riêng cho hóa đơn này (e.g. Đã trừ cọc 200.000đ, hạn đóng ngày 10/09...)..."}
+          className="w-full rounded-xl border border-slate-200 p-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        />
+        <p className="text-[11px] text-slate-400 italic">
+          Để trống nếu muốn sử dụng ghi chú chung được cấu hình trong phần Cài đặt.
+        </p>
+      </Card>
     </div>
     {/* End of Left Column */}
 
@@ -744,7 +798,7 @@ export function InvoiceCalculator({ initialRoomId }: InvoiceCalculatorProps) {
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-1.5 h-10 shadow-sm whitespace-nowrap"
               >
                 <Save className="w-4 h-4 shrink-0" />
-                <span>Lưu</span>
+                <span>{savedInvoice ? "Cập nhật" : "Lưu"}</span>
               </Button>
 
               {/* Download Button */}

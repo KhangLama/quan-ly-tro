@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { FileText, Download, Sparkles, Image as ImageIcon, Trash2 } from "lucide-react";
+import { FileText, Download, Sparkles, Image as ImageIcon, Trash2, Edit2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -80,11 +80,19 @@ export function InvoiceHistory({
       discountReason = "Event giảm giá tháng";
     }
 
+    let receiptNote = (inv as any).note || (inv as any).receipt_note;
+    if (!receiptNote && typeof window !== "undefined") {
+      try {
+        receiptNote = localStorage.getItem(`inv_note_${inv.room_id}_${inv.month}`);
+      } catch {}
+    }
+
     setSelectedReceipt({
       roomCode,
       month: inv.month,
       customerName,
       customerPhone,
+      receiptNote: receiptNote || undefined,
       oldElectric: Number(inv.old_electric),
       newElectric: Number(inv.new_electric),
       electricPrice: Number(inv.electric_price),
@@ -134,7 +142,7 @@ export function InvoiceHistory({
               </div>
 
               {/* Action row */}
-              <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between">
+              <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                 <Button
                   size="sm"
                   variant="outline"
@@ -146,15 +154,25 @@ export function InvoiceHistory({
                   <span>{deletingId === inv.id ? "Đang xóa..." : "Xóa"}</span>
                 </Button>
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleOpenReceipt(inv)}
-                  className="gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50 py-1 h-7 whitespace-nowrap"
-                >
-                  <ImageIcon className="w-3.5 h-3.5" />
-                  <span>Xem & Tải ảnh biên lai</span>
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Link
+                    href={`/invoices/new?roomId=${inv.room_id}&month=${inv.month}`}
+                    className="inline-flex items-center gap-1 text-xs text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 px-2.5 py-1 rounded-xl font-bold transition-colors h-7 whitespace-nowrap shadow-2xs"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Sửa</span>
+                  </Link>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenReceipt(inv)}
+                    className="gap-1.5 text-xs text-slate-700 border-slate-200 hover:bg-slate-50 py-1 h-7 whitespace-nowrap"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Xem biên lai</span>
+                  </Button>
+                </div>
               </div>
             </Card>
           );

@@ -137,6 +137,7 @@ export async function saveInvoice(data: {
   service_price: number;
   discount?: number;
   discount_reason?: string;
+  note?: string;
   status?: "pending" | "paid";
 }): Promise<SaveInvoiceResult> {
   try {
@@ -180,6 +181,7 @@ export async function saveInvoice(data: {
       service_price: calculation.servicePrice,
       discount: calculation.discount,
       discount_reason: data.discount_reason || "",
+      note: data.note || "",
       total_amount: calculation.totalAmount,
       status: invoiceStatus,
       paid_at: invoiceStatus === "paid" ? new Date().toISOString() : null,
@@ -194,9 +196,9 @@ export async function saveInvoice(data: {
         .select()
         .single();
 
-      // If schema missing discount/discount_reason column (PGRST204), fallback without them
+      // If schema missing discount/discount_reason/note column (PGRST204), fallback without them
       if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
-        const { discount: _, discount_reason: __, ...legacyPayload } = basePayload;
+        const { discount: _, discount_reason: __, note: ___, ...legacyPayload } = basePayload;
         const retry = await supabase
           .from("invoices")
           .update(legacyPayload)
@@ -208,7 +210,14 @@ export async function saveInvoice(data: {
       }
 
       if (error) return { success: false, error: error.message };
-      savedInvoice = updated ? { ...updated, discount: calculation.discount, discount_reason: data.discount_reason } : null;
+      savedInvoice = updated
+        ? {
+            ...updated,
+            discount: calculation.discount,
+            discount_reason: data.discount_reason,
+            note: data.note,
+          }
+        : null;
     } else {
       // Insert new
       const insertPayload = {
@@ -223,9 +232,9 @@ export async function saveInvoice(data: {
         .select()
         .single();
 
-      // If schema missing discount/discount_reason column (PGRST204), fallback without them
+      // If schema missing discount/discount_reason/note column (PGRST204), fallback without them
       if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
-        const { discount: _, discount_reason: __, ...legacyPayload } = insertPayload;
+        const { discount: _, discount_reason: __, note: ___, ...legacyPayload } = insertPayload;
         const retry = await supabase
           .from("invoices")
           .insert(legacyPayload)
@@ -236,7 +245,14 @@ export async function saveInvoice(data: {
       }
 
       if (error) return { success: false, error: error.message };
-      savedInvoice = inserted ? { ...inserted, discount: calculation.discount, discount_reason: data.discount_reason } : null;
+      savedInvoice = inserted
+        ? {
+            ...inserted,
+            discount: calculation.discount,
+            discount_reason: data.discount_reason,
+            note: data.note,
+          }
+        : null;
     }
 
     safeRevalidatePath("/");
