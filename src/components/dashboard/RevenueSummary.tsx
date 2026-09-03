@@ -38,7 +38,7 @@ export function RevenueSummary({ stats }: RevenueSummaryProps) {
   return (
     <div className="space-y-3">
       {/* 4 Compact KPIs */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
         {/* 1. Tổng dự thu */}
         <Card className="p-3.5 bg-gradient-to-br from-indigo-50/70 to-indigo-100/40 border-indigo-100/80 shadow-xs">
           <div className="flex items-center justify-between">

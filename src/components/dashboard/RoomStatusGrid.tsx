@@ -27,7 +27,7 @@ export function RoomStatusGrid({ rooms, selectedMonth }: RoomStatusGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3.5 sm:gap-4">
       {sortedRooms.map((room) => {
         const isPaid = room.billingBadgeLabel === "Đã thu";
         const isPending = room.billingBadgeLabel === "Chưa thu";
