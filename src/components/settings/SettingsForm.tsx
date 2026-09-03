@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Zap, Droplet, Shield, CreditCard, Save, RotateCcw, CheckCircle2, AlertCircle, MapPin, FileText } from "lucide-react";
+import { Zap, Droplet, Shield, CreditCard, Save, RotateCcw, CheckCircle2, AlertCircle, MapPin, FileText, Armchair, Plus, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { getSettings, updateSettings } from "@/actions/settings";
 import { formatVND } from "@/lib/utils";
+import { DEFAULT_FURNITURE_CATALOG } from "@/lib/constants/furniture";
 import type { Setting } from "@/types";
 
 export function SettingsForm() {
@@ -18,6 +19,10 @@ export function SettingsForm() {
   const [address, setAddress] = useState("325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ");
   const [serviceDescription, setServiceDescription] = useState("");
   const [receiptNote, setReceiptNote] = useState("");
+
+  // Furniture Catalog
+  const [furnitureCatalog, setFurnitureCatalog] = useState<string[]>(DEFAULT_FURNITURE_CATALOG);
+  const [newFurnitureName, setNewFurnitureName] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -39,6 +44,15 @@ export function SettingsForm() {
       if (res.settings.address !== undefined) setAddress(res.settings.address || "");
       if (res.settings.service_description !== undefined) setServiceDescription(res.settings.service_description || "");
       if (res.settings.receipt_note !== undefined) setReceiptNote(res.settings.receipt_note || "");
+
+      let catalog = (res.settings as any)?.furniture_catalog;
+      if (!catalog && typeof window !== "undefined") {
+        try {
+          const localCat = localStorage.getItem("app_furniture_catalog");
+          if (localCat) catalog = JSON.parse(localCat);
+        } catch {}
+      }
+      setFurnitureCatalog(catalog && Array.isArray(catalog) && catalog.length > 0 ? catalog : DEFAULT_FURNITURE_CATALOG);
     }
     setLoading(false);
   }, []);
@@ -46,6 +60,25 @@ export function SettingsForm() {
   useEffect(() => {
     fetchCurrentSettings();
   }, [fetchCurrentSettings]);
+
+  const handleAddFurniture = () => {
+    const trimmed = newFurnitureName.trim();
+    if (!trimmed) return;
+    if (furnitureCatalog.includes(trimmed)) {
+      alert("Món nội thất này đã có trong danh mục!");
+      return;
+    }
+    setFurnitureCatalog((prev) => [...prev, trimmed]);
+    setNewFurnitureName("");
+  };
+
+  const handleRemoveFurniture = (item: string) => {
+    setFurnitureCatalog((prev) => prev.filter((i) => i !== item));
+  };
+
+  const handleResetFurnitureCatalog = () => {
+    setFurnitureCatalog(DEFAULT_FURNITURE_CATALOG);
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +97,14 @@ export function SettingsForm() {
       address,
       service_description: finalServiceDesc,
       receipt_note: receiptNote,
+      furniture_catalog: furnitureCatalog,
     });
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("app_furniture_catalog", JSON.stringify(furnitureCatalog));
+      } catch {}
+    }
 
     setSaving(false);
 
@@ -85,6 +125,7 @@ export function SettingsForm() {
     setAddress("325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ");
     setServiceDescription("");
     setReceiptNote("");
+    setFurnitureCatalog(DEFAULT_FURNITURE_CATALOG);
   };
 
   if (loading) {
@@ -302,6 +343,79 @@ export function SettingsForm() {
           <p className="text-[11px] text-slate-500 mt-1">
             Nếu nhập, nội dung này sẽ thay thế câu ghi chú mặc định ở chân phiếu báo tiền phòng.
           </p>
+        </div>
+      </Card>
+
+      {/* Furniture Catalog Card */}
+      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Armchair className="w-4 h-4 text-indigo-600" />
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Danh mục nội thất & tiện nghi ({furnitureCatalog.length})
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetFurnitureCatalog}
+            className="text-[11px] text-slate-400 hover:text-indigo-600 transition-colors"
+          >
+            Khôi phục mẫu
+          </button>
+        </div>
+
+        <p className="text-[11px] text-slate-500">
+          Danh mục các món nội thất dùng chung cho toàn bộ nhà trọ. Khi chỉnh sửa phòng trọ, bạn có thể chọn các món này để gán vào từng phòng.
+        </p>
+
+        {/* Add new furniture item input */}
+        <div className="flex items-center gap-2">
+          <Input
+            value={newFurnitureName}
+            onChange={(e) => setNewFurnitureName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddFurniture();
+              }
+            }}
+            placeholder="e.g. Máy giặt, Bàn trang điểm, Smart TV..."
+            className="text-xs"
+          />
+          <Button
+            type="button"
+            onClick={handleAddFurniture}
+            variant="outline"
+            className="text-xs font-bold shrink-0 gap-1 h-9 px-3 border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Thêm</span>
+          </Button>
+        </div>
+
+        {/* Furniture chips list */}
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {furnitureCatalog.map((item) => (
+            <span
+              key={item}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200/80 group hover:border-slate-300 transition-all"
+            >
+              <span>{item}</span>
+              <button
+                type="button"
+                onClick={() => handleRemoveFurniture(item)}
+                title={`Xóa ${item}`}
+                className="text-slate-400 hover:text-rose-600 p-0.5 rounded-full hover:bg-white transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+          {furnitureCatalog.length === 0 && (
+            <span className="text-xs text-slate-400 italic">
+              Chưa có món nội thất nào. Vui lòng nhập ở trên hoặc bấm &quot;Khôi phục mẫu&quot;.
+            </span>
+          )}
         </div>
       </Card>
     </div>

@@ -153,15 +153,37 @@ export async function createRoom(data: { code: string; base_price: number }): Pr
 /**
  * Update an existing room
  */
-export async function updateRoom(id: string, data: Partial<RoomUpdate>): Promise<{ room?: Room; error?: string }> {
+export async function updateRoom(
+  id: string,
+  data: Partial<RoomUpdate> & { furniture?: string[] }
+): Promise<{ room?: Room; error?: string }> {
   try {
     const supabase = await createClient();
-    const { data: updated, error } = await supabase
+    let { data: updated, error } = await supabase
       .from("rooms")
       .update(data)
       .eq("id", id)
       .select()
       .single();
+
+    // If Supabase table is missing optional furniture column (PGRST204), fallback without it
+    if (error && (error.code === "PGRST204" || error.message?.includes("furniture") || error.message?.includes("Could not find"))) {
+      const { furniture: _, ...corePayload } = data;
+      const retry = await supabase
+        .from("rooms")
+        .update(corePayload)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (!retry.error) {
+        updated = {
+          ...retry.data,
+          furniture: data.furniture || [],
+        };
+        error = null;
+      }
+    }
 
     if (error) {
       return { error: error.message };

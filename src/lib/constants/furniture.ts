@@ -1,0 +1,15 @@
+export const DEFAULT_FURNITURE_CATALOG: string[] = [
+  "Máy lạnh",
+  "Tủ lạnh",
+  "Máy nước nóng",
+  "Giường nệm",
+  "Tủ quần áo",
+  "Bàn ghế làm việc",
+  "Bếp từ",
+  "Kệ bếp",
+  "Máy giặt",
+  "Wifi riêng",
+  "Khoá vân tay",
+  "Gác lửng",
+  "Ban công / Cửa sổ",
+];

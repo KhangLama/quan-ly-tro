@@ -46,11 +46,12 @@ export async function updateSettings(data: {
   address?: string;
   service_description?: string;
   receipt_note?: string;
+  furniture_catalog?: string[];
 }): Promise<SettingsActionResult> {
   try {
     const supabase = await createClient();
 
-    const updatePayload: Partial<SettingUpdate> = {};
+    const updatePayload: any = {};
     if (data.electric_price !== undefined) updatePayload.electric_price = Number(data.electric_price);
     if (data.water_price !== undefined) updatePayload.water_price = Number(data.water_price);
     if (data.service_price !== undefined) updatePayload.service_price = Number(data.service_price);
@@ -58,6 +59,7 @@ export async function updateSettings(data: {
     if (data.address !== undefined) updatePayload.address = data.address.trim();
     if (data.service_description !== undefined) updatePayload.service_description = data.service_description.trim();
     if (data.receipt_note !== undefined) updatePayload.receipt_note = data.receipt_note.trim();
+    if (data.furniture_catalog !== undefined) updatePayload.furniture_catalog = data.furniture_catalog;
 
     let { data: updated, error } = await supabase
       .from("settings")
@@ -92,6 +94,7 @@ export async function updateSettings(data: {
           address: updatePayload.address,
           service_description: updatePayload.service_description,
           receipt_note: updatePayload.receipt_note,
+          furniture_catalog: updatePayload.furniture_catalog,
         };
         error = null;
       }

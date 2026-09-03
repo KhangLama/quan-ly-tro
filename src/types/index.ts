@@ -1,13 +1,23 @@
 import type { Database } from "./database.ts";
 
 // Database row shortcuts
-export type Setting = Database["public"]["Tables"]["settings"]["Row"];
+export type Setting = Database["public"]["Tables"]["settings"]["Row"] & {
+  furniture_catalog?: string[];
+};
 export type SettingInsert = Database["public"]["Tables"]["settings"]["Insert"];
-export type SettingUpdate = Database["public"]["Tables"]["settings"]["Update"];
+export type SettingUpdate = Database["public"]["Tables"]["settings"]["Update"] & {
+  furniture_catalog?: string[];
+};
 
-export type Room = Database["public"]["Tables"]["rooms"]["Row"];
-export type RoomInsert = Database["public"]["Tables"]["rooms"]["Insert"];
-export type RoomUpdate = Database["public"]["Tables"]["rooms"]["Update"];
+export type Room = Database["public"]["Tables"]["rooms"]["Row"] & {
+  furniture?: string[];
+};
+export type RoomInsert = Database["public"]["Tables"]["rooms"]["Insert"] & {
+  furniture?: string[];
+};
+export type RoomUpdate = Database["public"]["Tables"]["rooms"]["Update"] & {
+  furniture?: string[];
+};
 
 export type Tenant = Database["public"]["Tables"]["tenants"]["Row"];
 export type TenantInsert = Database["public"]["Tables"]["tenants"]["Insert"];
