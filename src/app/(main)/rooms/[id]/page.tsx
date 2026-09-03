@@ -26,8 +26,11 @@ import { TenantHistory } from "@/components/rooms/TenantHistory";
 import { InvoiceHistory } from "@/components/rooms/InvoiceHistory";
 import { AddTenantModal } from "@/components/rooms/AddTenantModal";
 import { EditRoomModal } from "@/components/rooms/EditRoomModal";
+import { RoomContractModal } from "@/components/rooms/RoomContractModal";
 import { getRoomById, deleteRoom, type GetRoomDetailsResult } from "@/actions/rooms";
+import { getSettings } from "@/actions/settings";
 import { formatVND } from "@/lib/utils";
+import type { Setting } from "@/types";
 
 export default function RoomDetailPage() {
   const params = useParams();
@@ -35,14 +38,20 @@ export default function RoomDetailPage() {
   const roomId = params.id as string;
 
   const [data, setData] = useState<GetRoomDetailsResult | null>(null);
+  const [settings, setSettings] = useState<Setting | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
   const [isEditRoomModalOpen, setIsEditRoomModalOpen] = useState(false);
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
 
   const fetchDetails = useCallback(async () => {
     setLoading(true);
-    const res = await getRoomById(roomId);
-    setData(res);
+    const [roomRes, settingsRes] = await Promise.all([
+      getRoomById(roomId),
+      getSettings(),
+    ]);
+    setData(roomRes);
+    if (settingsRes.settings) setSettings(settingsRes.settings);
     setLoading(false);
   }, [roomId]);
 
@@ -105,12 +114,24 @@ export default function RoomDetailPage() {
           <span>Danh sách phòng</span>
         </Link>
 
-        <Link href={`/invoices/new?roomId=${room.id}`}>
-          <Button size="sm" variant="outline" className="gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50 whitespace-nowrap">
-            <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span>Chốt điện nước</span>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsContractModalOpen(true)}
+            className="gap-1.5 text-xs text-emerald-700 border-emerald-300 hover:bg-emerald-50 whitespace-nowrap font-bold shadow-2xs"
+          >
+            <FileText className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span>Tạo hợp đồng</span>
           </Button>
-        </Link>
+
+          <Link href={`/invoices/new?roomId=${room.id}`}>
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50 whitespace-nowrap font-semibold">
+              <Zap className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>Chốt điện nước</span>
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Room Header Card */}
@@ -310,6 +331,17 @@ export default function RoomDetailPage() {
         onClose={() => setIsEditRoomModalOpen(false)}
         onSuccess={fetchDetails}
       />
+
+      {/* Room Contract Modal */}
+      {room && (
+        <RoomContractModal
+          room={room}
+          leadTenant={leadTenant}
+          settings={settings}
+          isOpen={isContractModalOpen}
+          onClose={() => setIsContractModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
