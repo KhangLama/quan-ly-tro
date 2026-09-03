@@ -41,6 +41,7 @@ export function RoomContractModal({
   const [contractMonth, setContractMonth] = useState(String(today.getMonth() + 1).padStart(2, "0"));
   const [contractYear, setContractYear] = useState(String(today.getFullYear()));
   const [innName, setInnName] = useState("Nhà trọ Trúc Lam");
+  const [signatureHeight, setSignatureHeight] = useState(120);
 
   // Party A (Landlord - Bên A)
   const [partyAName, setPartyAName] = useState("Bùi Thanh Tùng");
@@ -258,20 +259,22 @@ export function RoomContractModal({
             }
             .page-container {
               width: 210mm;
-              height: 297mm;
-              padding: 16mm 18mm 16mm 18mm;
+              padding: 13mm 18mm 13mm 18mm;
               margin: 0 auto;
               page-break-after: always;
               break-after: page;
-              display: flex;
-              flex-direction: column;
-              justify-content: flex-start;
               box-sizing: border-box;
-              overflow: hidden;
             }
             .page-container:last-child {
               page-break-after: auto;
               break-after: auto;
+            }
+            .page-3-box {
+              font-size: 11.5pt;
+              line-height: 1.34;
+            }
+            .page-3-box p {
+              margin-top: 2px;
             }
             .text-center { text-align: center; }
             .text-justify { text-align: justify; text-justify: inter-word; }
@@ -302,7 +305,7 @@ export function RoomContractModal({
             .signatures-container {
               display: table;
               width: 100%;
-              margin-top: 24px;
+              margin-top: 16px;
               page-break-inside: avoid;
               break-inside: avoid;
             }
@@ -313,7 +316,7 @@ export function RoomContractModal({
               vertical-align: top;
             }
             .signature-space {
-              height: 85px;
+              height: ${signatureHeight}px;
             }
           </style>
         </head>
@@ -446,15 +449,41 @@ export function RoomContractModal({
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
-          <span>Địa điểm:</span>
-          <input
-            type="text"
-            value={innName}
-            onChange={(e) => setInnName(e.target.value)}
-            className="h-7 px-2 font-medium text-slate-800 bg-white border border-indigo-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
-            placeholder="Nhà trọ Trúc Lam"
-          />
+        {/* Signature Height Control */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 bg-white border border-indigo-200 px-2.5 py-1 rounded-xl shadow-2xs">
+            <span className="text-slate-600 font-semibold text-[11px] whitespace-nowrap">Chỗ ký tên:</span>
+            <button
+              type="button"
+              onClick={() => setSignatureHeight((h) => Math.max(60, h - 15))}
+              className="w-5 h-5 flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 rounded text-xs transition-colors"
+              title="Thu nhỏ chỗ ký"
+            >
+              -
+            </button>
+            <span className="font-bold text-indigo-700 min-w-9 text-center text-xs">
+              {signatureHeight}px
+            </span>
+            <button
+              type="button"
+              onClick={() => setSignatureHeight((h) => Math.min(180, h + 15))}
+              className="w-5 h-5 flex items-center justify-center font-bold text-slate-700 hover:bg-slate-100 rounded text-xs transition-colors"
+              title="Mở rộng chỗ ký"
+            >
+              +
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+            <span>Địa điểm:</span>
+            <input
+              type="text"
+              value={innName}
+              onChange={(e) => setInnName(e.target.value)}
+              className="h-7 px-2 font-medium text-slate-800 bg-white border border-indigo-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+              placeholder="Nhà trọ Trúc Lam"
+            />
+          </div>
         </div>
       </div>
 
@@ -903,12 +932,12 @@ export function RoomContractModal({
 
             {/* TRANG 3 */}
             <div
-              className="page-container max-w-[760px] mx-auto bg-white p-8 sm:p-12 shadow-md rounded-lg text-slate-900 leading-relaxed text-[13pt]"
+              className="page-container page-3-box max-w-[760px] mx-auto bg-white p-8 sm:p-12 shadow-md rounded-lg text-slate-900 leading-[1.36] text-[12pt]"
               style={{ fontFamily: "'Times New Roman', Times, serif" }}
             >
               {/* Tiếp tục Điều 3 */}
-              <div className="space-y-1.5 text-justify mb-4">
-                <div className="pl-3 space-y-1">
+              <div className="space-y-1 text-justify mb-3">
+                <div className="pl-3 space-y-0.5">
                   <p>- Cấm tổ chức ăn nhậu, tụ tập tham gia các hoạt động cờ bạc, cho vay, đánh bài, số đề, đánh nhau, mua bán, tàng trữ và sử dụng trái phép các chất ma túy.</p>
                   <p>- Bên B không được tiếp khách quá 23h. Trường hợp tự ý cho người ở lại qua đêm nếu Công an kiểm tra thì Bên B sẽ phải tự chịu trách nhiệm (nếu bị phạt).</p>
                   <p>- Bên B phải tôn trọng giờ nghỉ trưa, đặc biệt là sau 23h không được tổ chức tiệc tùng tại nhà trọ gây mất an ninh trật tự, ảnh hưởng những người thuê còn lại.</p>
@@ -923,9 +952,9 @@ export function RoomContractModal({
               </div>
 
               {/* Điều 4: Chấm dứt hợp đồng */}
-              <div className="space-y-1.5 mb-4 text-justify">
+              <div className="space-y-1 mb-3 text-justify">
                 <p className="font-bold">Điều 4: Chấm dứt hợp đồng</p>
-                <div className="pl-3 space-y-1">
+                <div className="pl-3 space-y-0.5">
                   <p>- Hợp đồng chấm dứt khi hết hạn hoặc do hai bên thỏa thuận.</p>
                   <p>- Trường hợp Bên B chấm dứt hợp đồng trước thời hạn, bên B có quyền chuyển giao/ cho thuê lại cho bên mới thì Bên B sẽ nhận lại được tiền cọc.</p>
                   <p>- Trường hợp Bên B chấm dứt hợp đồng trước thời hạn mà không chuyển giao/cho thuê lại cho bên mới thì Bên B sẽ mất 100 % số tiền cọc và Bên A sẽ nhận lại phòng ở đã cho Bên B thuê. Ngoài ra Bên B phải có trách nhiệm thanh toán các khoản chi phí dịch vụ (điện, nước…) khi Bên B sử dụng phòng ở.</p>
@@ -935,9 +964,9 @@ export function RoomContractModal({
               </div>
 
               {/* Điều 5: Điều khoản chung */}
-              <div className="space-y-1.5 mb-6 text-justify">
+              <div className="space-y-1 mb-4 text-justify">
                 <p className="font-bold">Điều 5: Điều khoản chung</p>
-                <div className="pl-3 space-y-1">
+                <div className="pl-3 space-y-0.5">
                   <p>- Hợp đồng có hiệu lực kể từ ngày ký.</p>
                   <p>- Mọi tranh chấp phát sinh sẽ được giải quyết thông qua thương lượng hoặc theo quy định của pháp luật.</p>
                   <p>- Hợp đồng được lập thành hai bản, mỗi bên giữ một bản có giá trị pháp lý như nhau.</p>
@@ -945,18 +974,18 @@ export function RoomContractModal({
               </div>
 
               {/* Signatures */}
-              <div className="signatures-container pt-2 pb-8 font-serif">
+              <div className="signatures-container pt-3 pb-8 font-serif">
                 <div className="signature-col">
                   <p className="font-bold uppercase text-sm">Bên A</p>
                   <p className="text-xs italic text-slate-500">(ký, ghi rõ họ tên)</p>
-                  <div className="signature-space" />
-                  <p className="font-bold">{partyAName}</p>
+                  <div className="signature-space" style={{ height: `${signatureHeight}px` }} />
+                  <p className="font-bold text-sm text-slate-900">{partyAName}</p>
                 </div>
                 <div className="signature-col">
                   <p className="font-bold uppercase text-sm">Bên B</p>
                   <p className="text-xs italic text-slate-500">(ký, ghi rõ họ tên)</p>
-                  <div className="signature-space" />
-                  <p className="font-bold">{partyBName || "...................................."}</p>
+                  <div className="signature-space" style={{ height: `${signatureHeight}px` }} />
+                  <p className="font-bold text-sm text-slate-900">{partyBName || "...................................."}</p>
                 </div>
               </div>
             </div>
