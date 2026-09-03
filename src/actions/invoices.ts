@@ -196,15 +196,28 @@ export async function saveInvoice(data: {
         .select()
         .single();
 
-      // If schema missing discount/discount_reason/note column (PGRST204), fallback without them
+      // If schema missing note or discount columns (PGRST204), gracefully fallback
       if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
-        const { discount: _, discount_reason: __, note: ___, ...legacyPayload } = basePayload;
-        const retry = await supabase
+        // Step 1: Try dropping only 'note' (keeping discount and discount_reason)
+        const { note: _, ...withoutNote } = basePayload;
+        let retry = await supabase
           .from("invoices")
-          .update(legacyPayload)
+          .update(withoutNote)
           .eq("id", existing.id)
           .select()
           .single();
+
+        // Step 2: If still failing, drop all optional columns
+        if (retry.error && (retry.error.code === "PGRST204" || retry.error.message?.includes("column"))) {
+          const { discount: __, discount_reason: ___, ...legacyPayload } = withoutNote;
+          retry = await supabase
+            .from("invoices")
+            .update(legacyPayload)
+            .eq("id", existing.id)
+            .select()
+            .single();
+        }
+
         updated = retry.data;
         error = retry.error;
       }
@@ -232,14 +245,26 @@ export async function saveInvoice(data: {
         .select()
         .single();
 
-      // If schema missing discount/discount_reason/note column (PGRST204), fallback without them
+      // If schema missing note or discount columns (PGRST204), gracefully fallback
       if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
-        const { discount: _, discount_reason: __, note: ___, ...legacyPayload } = insertPayload;
-        const retry = await supabase
+        // Step 1: Try dropping only 'note' (keeping discount and discount_reason)
+        const { note: _, ...withoutNote } = insertPayload;
+        let retry = await supabase
           .from("invoices")
-          .insert(legacyPayload)
+          .insert(withoutNote)
           .select()
           .single();
+
+        // Step 2: If still failing, drop all optional columns
+        if (retry.error && (retry.error.code === "PGRST204" || retry.error.message?.includes("column"))) {
+          const { discount: __, discount_reason: ___, ...legacyPayload } = withoutNote;
+          retry = await supabase
+            .from("invoices")
+            .insert(legacyPayload)
+            .select()
+            .single();
+        }
+
         inserted = retry.data;
         error = retry.error;
       }

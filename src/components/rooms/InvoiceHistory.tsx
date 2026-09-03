@@ -116,6 +116,13 @@ export function InvoiceHistory({
       <div className="space-y-2">
         {invoices.map((inv) => {
           const isPaid = inv.status === "paid";
+          let itemNote = (inv as any).note || (inv as any).receipt_note;
+          if (!itemNote && typeof window !== "undefined") {
+            try {
+              itemNote = localStorage.getItem(`inv_note_${inv.room_id}_${inv.month}`);
+            } catch {}
+          }
+
           return (
             <Card key={inv.id} className="p-3.5 bg-white border-slate-200/80 shadow-xs text-xs">
               <div className="flex items-start justify-between gap-2">
@@ -128,6 +135,22 @@ export function InvoiceHistory({
                     <div className="text-[11px] text-slate-500 mt-0.5 truncate">
                       Điện: {inv.old_electric} → {inv.new_electric} ({inv.new_electric - inv.old_electric} số) | Nước: {inv.old_water} → {inv.new_water} ({inv.new_water - inv.old_water} m³)
                     </div>
+                    {/* Discount & Note preview */}
+                    {(Number(inv.discount) > 0 || itemNote) && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        {Number(inv.discount) > 0 && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-100">
+                            🎁 Giảm {formatVND(Number(inv.discount))}đ
+                            {(inv as any).discount_reason ? ` (${(inv as any).discount_reason})` : ""}
+                          </span>
+                        )}
+                        {itemNote && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/70 truncate max-w-xs" title={itemNote}>
+                            📝 {itemNote}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
