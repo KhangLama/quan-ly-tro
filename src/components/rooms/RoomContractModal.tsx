@@ -13,7 +13,7 @@ import {
   Calendar,
   Eye,
   Sliders,
-  RotateCcw,
+  Info,
 } from "lucide-react";
 import type { Room, Tenant, Setting } from "@/types";
 
@@ -32,7 +32,6 @@ export function RoomContractModal({
   isOpen,
   onClose,
 }: RoomContractModalProps) {
-  // Tabs: "preview" (Xem trước & In) or "config" (Chỉnh sửa thông tin)
   const [tab, setTab] = useState<"preview" | "config">("preview");
   const [copied, setCopied] = useState(false);
 
@@ -82,11 +81,10 @@ export function RoomContractModal({
   // Furniture items list
   const [furnitureItems, setFurnitureItems] = useState<string[]>([]);
 
-  // Load saved Party A preferences & populate tenant data
+  // Populate data when opening
   useEffect(() => {
     if (!isOpen) return;
 
-    // Load Party A from localStorage if available
     if (typeof window !== "undefined") {
       try {
         const savedA = localStorage.getItem("contract_party_a");
@@ -103,17 +101,14 @@ export function RoomContractModal({
       } catch {}
     }
 
-    // Populate Tenant (Party B)
     if (leadTenant) {
       setPartyBName(leadTenant.name || "");
       setPartyBCccd(leadTenant.cccd || "");
       setPartyBPhone(leadTenant.phone || "");
 
-      // Date calculations
       if (leadTenant.start_date) {
         const d = new Date(leadTenant.start_date);
         if (!isNaN(d.getTime())) {
-          // Align contract signing date to tenant start date by default
           setContractDay(String(d.getDate()).padStart(2, "0"));
           setContractMonth(String(d.getMonth() + 1).padStart(2, "0"));
           setContractYear(String(d.getFullYear()));
@@ -123,7 +118,6 @@ export function RoomContractModal({
           ).padStart(2, "0")}/${d.getFullYear()}`;
           setLeaseStartDate(sDateStr);
 
-          // Default 12 months later
           const nextYear = new Date(d);
           nextYear.setFullYear(nextYear.getFullYear() + 1);
           const eDateStr = `${String(nextYear.getDate()).padStart(2, "0")}/${String(
@@ -140,13 +134,11 @@ export function RoomContractModal({
       }
     }
 
-    // Room specifics
     setMonthlyPrice(room.base_price || 2000000);
     if (settings?.address) setRoomAddress(settings.address);
     if (settings?.electric_price) setElectricPrice(settings.electric_price);
     if (settings?.water_price) setWaterPrice(settings.water_price);
 
-    // Bank parsing
     if (settings?.bank_info) {
       const parts = settings.bank_info.split("-").map((s) => s.trim());
       if (parts.length >= 3) {
@@ -161,7 +153,6 @@ export function RoomContractModal({
       }
     }
 
-    // Furniture list
     let fList: string[] = (room as any)?.furniture || [];
     if ((!fList || fList.length === 0) && typeof window !== "undefined") {
       try {
@@ -213,7 +204,7 @@ export function RoomContractModal({
     }
   };
 
-  // Robust isolated iframe printing that never gets clipped by modals or page overflow
+  // Pure multi-page A4 print without browser headers or footers
   const handlePrint = () => {
     const printContent = contractRef.current?.innerHTML;
     if (!printContent) return;
@@ -240,11 +231,11 @@ export function RoomContractModal({
       <html>
         <head>
           <meta charset="utf-8" />
-          <title>Hợp đồng thuê phòng - Phòng ${room.code}</title>
+          <title> </title>
           <style>
             @page {
               size: A4 portrait;
-              margin: 18mm 16mm 18mm 16mm;
+              margin: 0mm; /* Completely suppresses browser URL, date, and headers/footers */
             }
             * {
               box-sizing: border-box;
@@ -257,11 +248,30 @@ export function RoomContractModal({
               color: #000;
               font-family: 'Times New Roman', Times, serif;
               font-size: 13pt;
-              line-height: 1.45;
+              line-height: 1.42;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
             p, div {
               margin: 0;
               padding: 0;
+            }
+            .page-container {
+              width: 210mm;
+              height: 297mm;
+              padding: 16mm 18mm 16mm 18mm;
+              margin: 0 auto;
+              page-break-after: always;
+              break-after: page;
+              display: flex;
+              flex-direction: column;
+              justify-content: flex-start;
+              box-sizing: border-box;
+              overflow: hidden;
+            }
+            .page-container:last-child {
+              page-break-after: auto;
+              break-after: auto;
             }
             .text-center { text-align: center; }
             .text-justify { text-align: justify; text-justify: inter-word; }
@@ -270,28 +280,22 @@ export function RoomContractModal({
             .italic { font-style: italic; }
             .uppercase { text-transform: uppercase; }
             .underline { text-decoration: underline; }
-            .avoid-break {
-              break-inside: avoid;
-              page-break-inside: avoid;
-            }
-            .space-y-1 > * + * { margin-top: 4px; }
-            .space-y-1-5 > * + * { margin-top: 6px; }
-            .space-y-2 > * + * { margin-top: 8px; }
+            .space-y-1 > * + * { margin-top: 3px; }
+            .space-y-1-5 > * + * { margin-top: 5px; }
+            .space-y-2 > * + * { margin-top: 7px; }
             .pl-3 { padding-left: 14px; }
             .pl-4 { padding-left: 20px; }
-            .my-2 { margin-top: 8px; margin-bottom: 8px; }
-            .my-4 { margin-top: 14px; margin-bottom: 14px; }
-            .my-6 { margin-top: 18px; margin-bottom: 18px; }
-            .mb-2 { margin-bottom: 8px; }
+            .my-2 { margin-top: 6px; margin-bottom: 6px; }
+            .my-4 { margin-top: 12px; margin-bottom: 12px; }
+            .my-5 { margin-top: 15px; margin-bottom: 15px; }
+            .mb-2 { margin-bottom: 6px; }
+            .mb-3 { margin-bottom: 10px; }
             .mb-4 { margin-bottom: 14px; }
-            .mb-6 { margin-bottom: 20px; }
-            .pt-1 { padding-top: 4px; }
-            .pt-2 { padding-top: 8px; }
-            .pt-4 { padding-top: 16px; }
+            .pt-1 { padding-top: 3px; }
             .bank-box {
               border: 1px solid #111;
-              padding: 8px 12px;
-              margin: 8px 0;
+              padding: 7px 12px;
+              margin: 6px 0;
               border-radius: 4px;
               background-color: #fafafa;
             }
@@ -299,8 +303,8 @@ export function RoomContractModal({
               display: table;
               width: 100%;
               margin-top: 24px;
-              break-inside: avoid;
               page-break-inside: avoid;
+              break-inside: avoid;
             }
             .signature-col {
               display: table-cell;
@@ -309,7 +313,7 @@ export function RoomContractModal({
               vertical-align: top;
             }
             .signature-space {
-              height: 90px;
+              height: 85px;
             }
           </style>
         </head>
@@ -708,222 +712,252 @@ export function RoomContractModal({
         </div>
       )}
 
-      {/* Tab 2: Document Preview */}
+      {/* Tab 2: Document Preview (Rendered as 3 distinct A4 pages matching the original PDF) */}
       {tab === "preview" && (
-        <div className="max-h-[65vh] overflow-y-auto p-2 bg-slate-100 rounded-2xl border border-slate-200">
-          {/* Printable contract container */}
-          <div
-            ref={contractRef}
-            className="max-w-[760px] mx-auto bg-white p-8 sm:p-12 shadow-sm rounded-lg text-slate-900 leading-relaxed text-[13pt]"
-            style={{ fontFamily: "'Times New Roman', Times, serif" }}
-          >
-            {/* Header: Quốc hiệu & Tiêu ngữ */}
-            <div className="text-center space-y-1 mb-6">
-              <p className="font-bold text-sm tracking-wide uppercase">
-                CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
-              </p>
-              <p className="font-bold text-xs underline underline-offset-4">
-                Độc lập – Tự do – Hạnh phúc
-              </p>
-              <p className="text-xs italic tracking-widest text-slate-500 pt-0.5">
-                -----ooo0ooo-----
-              </p>
-            </div>
+        <div className="max-h-[65vh] overflow-y-auto p-3 bg-slate-200/80 rounded-2xl border border-slate-300 space-y-6">
+          <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
+            <Info className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Mẹo in ấn:</strong> Hệ thống đã tự động cấu hình chống in URL và tiêu đề trang. Nếu trên máy bạn vẫn thấy đường link web khi bấm in, hãy mở mục <strong>Cài đặt khác (More settings)</strong> trong hộp thoại in và <strong>bỏ chọn &quot;Tiêu đề đầu và chân trang&quot; (Headers and footers)</strong>.
+            </span>
+          </div>
 
-            {/* Contract Title */}
-            <div className="text-center my-6">
-              <p className="text-lg sm:text-xl font-bold uppercase tracking-wide">
-                HỢP ĐỒNG CHO THUÊ PHÒNG TRỌ
-              </p>
-            </div>
-
-            {/* Legal grounds */}
-            <div className="space-y-1 text-justify mb-4 italic text-[12.5pt]">
-              <p>Căn cứ bộ luật dân sự, luật đất đai của nước Cộng Hòa Xã Hội Chủ Nghĩa Việt Nam.</p>
-              <p>Căn cứ vào điều kiện và nhu cầu thực tế của các bên trong hợp đồng này.</p>
-              <p className="not-italic pt-1">
-                Hôm nay, ngày {contractDay} tháng {contractMonth} năm {contractYear}, tại {innName}, chúng tôi gồm:
-              </p>
-            </div>
-
-            {/* Party A */}
-            <div className="space-y-1 mb-4">
-              <p className="font-bold uppercase tracking-wide">
-                ĐẠI DIỆN BÊN CHO THUÊ PHÒNG TRỌ (gọi tắt là Bên A):
-              </p>
-              <div className="pl-3 space-y-1">
-                <p>
-                  - Họ và tên: <strong>{partyAName}</strong>
+          {/* Printable contract container containing exact 3 pages */}
+          <div ref={contractRef} className="space-y-6">
+            {/* TRANG 1 */}
+            <div
+              className="page-container max-w-[760px] mx-auto bg-white p-8 sm:p-12 shadow-md rounded-lg text-slate-900 leading-relaxed text-[13pt]"
+              style={{ fontFamily: "'Times New Roman', Times, serif" }}
+            >
+              {/* Header: Quốc hiệu & Tiêu ngữ */}
+              <div className="text-center space-y-1 mb-5">
+                <p className="font-bold text-sm tracking-wide uppercase">
+                  CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
                 </p>
-                <p>
-                  - CCCD số: <strong>{partyACccd}</strong>; Ngày cấp: {partyACccdDate}; Nơi cấp: {partyACccdPlace}
+                <p className="font-bold text-xs underline underline-offset-4">
+                  Độc lập – Tự do – Hạnh phúc
                 </p>
-                <p>- Địa chỉ thường trú: {partyAAddress}</p>
-                <p>
-                  - Số điện thoại: <strong>{partyAPhone}</strong>
+                <p className="text-xs italic tracking-widest text-slate-500 pt-0.5">
+                  -----ooo0ooo-----
                 </p>
               </div>
-            </div>
 
-            {/* Party B */}
-            <div className="space-y-1 mb-4">
-              <p className="font-bold uppercase tracking-wide">
-                ĐẠI DIỆN BÊN THUÊ PHÒNG TRỌ (gọi tắt là Bên B):
-              </p>
-              <div className="pl-3 space-y-1">
-                <p>
-                  - Họ và tên: <strong>{partyBName || "...................................................."}</strong>
-                </p>
-                <p>
-                  - CCCD số: <strong>{partyBCccd || "........................"}</strong>; Ngày cấp: {partyBCccdDate || "..../..../........"}; Nơi cấp: {partyBCccdPlace}
-                </p>
-                <p>- Địa chỉ thường trú: {partyBAddress || "..........................................................................................."}</p>
-                <p>
-                  - Số điện thoại: <strong>{partyBPhone || "........................"}</strong>
+              {/* Contract Title */}
+              <div className="text-center my-4">
+                <p className="text-lg sm:text-xl font-bold uppercase tracking-wide">
+                  HỢP ĐỒNG CHO THUÊ PHÒNG TRỌ
                 </p>
               </div>
-            </div>
 
-            <p className="italic mb-4">
-              Hai bên cùng thỏa thuận và ký kết hợp đồng thuê phòng trọ với các điều khoản sau:
-            </p>
+              {/* Legal grounds */}
+              <div className="space-y-1 text-justify mb-4 italic text-[12.5pt]">
+                <p>Căn cứ bộ luật dân sự, luật đất đai của nước Cộng Hòa Xã Hội Chủ Nghĩa Việt Nam.</p>
+                <p>Căn cứ vào điều kiện và nhu cầu thực tế của các bên trong hợp đồng này.</p>
+                <p className="not-italic pt-1">
+                  Hôm nay, ngày {contractDay} tháng {contractMonth} năm {contractYear}, tại {innName}, chúng tôi gồm:
+                </p>
+              </div>
 
-            {/* Điều 1: Thông tin chung */}
-            <div className="space-y-2 mb-4 text-justify">
-              <p className="font-bold">Điều 1: Thông tin chung</p>
-              <div className="pl-3 space-y-1.5">
-                <p>- Địa chỉ phòng trọ: {roomAddress}</p>
-                <p>
-                  - Phòng trọ số: <strong>{room.code}</strong>
+              {/* Party A */}
+              <div className="space-y-1 mb-4">
+                <p className="font-bold uppercase tracking-wide">
+                  ĐẠI DIỆN BÊN CHO THUÊ PHÒNG TRỌ (gọi tắt là Bên A):
                 </p>
-                <p>- Diện tích: {roomArea}</p>
-                <p>
-                  - Giá thuê: <strong>{formatVND(monthlyPrice)} VNĐ/tháng</strong>, giá thuê không bao gồm tiền điện, tiền nước và các khoản chi phí khác phát sinh do bên thuê sử dụng.
-                </p>
-                <p>
-                  - Thời gian thuê: <strong>{leaseMonths} tháng</strong>, thời gian tính tiền thuê từ ngày <strong>{leaseStartDate}</strong> đến ngày <strong>{leaseEndDate}</strong>.
-                </p>
-                <p>
-                  - Khi hết thời hạn thuê, nếu hai bên có nhu cầu tiếp tục thuê, sẽ ký hợp đồng mới hoặc gia hạn hợp đồng hiện tại.
-                </p>
-                <p>
-                  - Tiền cọc: <strong>{formatVND(depositAmount)} VNĐ</strong> (tương đương {Math.round(depositAmount / (monthlyPrice || 1))} tháng tiền thuê).
-                </p>
-                <p>
-                  - Tiền điện: <strong>{formatVND(electricPrice)} VNĐ/kWh</strong>, tính theo chỉ số công tơ, thanh toán vào cuối các tháng.
-                </p>
-                <p>
-                  - Tiền nước: <strong>{formatVND(waterPrice)} VNĐ/m³</strong>.
-                </p>
-                <p>
-                  - Với phòng có trang bị máy lạnh, Bên A chịu trách nhiệm bảo trì và định kỳ vệ sinh miễn phí thời gian 06 (Sáu) tháng/ 1 lần. Nếu bên B có phát sinh vệ sinh máy ngoài lịch định kỳ, Bên A sẽ hỗ trợ gọi thợ máy, chi phí do bên B chi trả.
-                </p>
-                <p>
-                  - Khi có sự cố nghẹt cống, tắc cống, tràn cống xảy ra: nếu nguyên nhân do Bên B thì Bên B phải thanh toán cho Bên A chi phí sửa chữa và chi phí sẽ được thông báo cụ thể khi sửa chữa.
-                </p>
-                <p>
-                  - Hình thức thanh toán: Tiền mặt hoặc chuyển khoản vào thông tin sau:
-                </p>
-                <div className="bank-box my-2 p-2.5 border border-black rounded">
-                  <p>Họ và Tên: <strong>{bankOwner}</strong></p>
-                  <p>Số tài khoản: <strong>{bankAccount || "...................................."}</strong> tại Ngân hàng <strong>{bankName || "...................................."}</strong></p>
+                <div className="pl-3 space-y-1">
+                  <p>
+                    - Họ và tên: <strong>{partyAName}</strong>
+                  </p>
+                  <p>
+                    - CCCD số: <strong>{partyACccd}</strong>; Ngày cấp: {partyACccdDate}; Nơi cấp: {partyACccdPlace}
+                  </p>
+                  <p>- Địa chỉ thường trú: {partyAAddress}</p>
+                  <p>
+                    - Số điện thoại: <strong>{partyAPhone}</strong>
+                  </p>
                 </div>
-                <p>
-                  - Bên B sẽ thanh toán tiền thuê phòng cho bên A vào <strong>ngày 05 hàng tháng</strong> cùng với tiền điện và tiền nước. Nếu quá hạn trễ 3 ngày so với thời gian thanh toán và để tình trạng thanh toán trễ quá 3 lần, Bên A có quyền đơn phương chấm dứt hợp đồng và lấy lại phòng (trường hợp xấu nhất buộc phải cắt ổ khoá và không phải chịu trách nhiệm về tài sản trong phòng), Bên B không được quyền khiếu nại và mất 100% số tiền đã cọc.
-                </p>
+              </div>
 
-                {/* Furniture Items */}
-                <p className="font-semibold pt-1">- Nội thất trang bị sẵn:</p>
-                <div className="pl-4 space-y-1">
-                  {furnitureItems.length > 0 ? (
-                    furnitureItems.map((item, idx) => (
-                      <p key={idx}>
-                        {idx + 1}. {item}: 01 cái, hoạt động bình thường.
-                      </p>
-                    ))
-                  ) : (
-                    <>
-                      <p>1. Máy lạnh: 01 cái, hoạt động bình thường.</p>
-                      <p>2. Bếp hồng ngoại: ........ cái, hoạt động bình thường.</p>
-                      <p>3. Máy nước nóng năng lượng: .......... hoạt động bình thường.</p>
-                    </>
-                  )}
+              {/* Party B */}
+              <div className="space-y-1 mb-4">
+                <p className="font-bold uppercase tracking-wide">
+                  ĐẠI DIỆN BÊN THUÊ PHÒNG TRỌ (gọi tắt là Bên B):
+                </p>
+                <div className="pl-3 space-y-1">
+                  <p>
+                    - Họ và tên: <strong>{partyBName || "...................................................."}</strong>
+                  </p>
+                  <p>
+                    - CCCD số: <strong>{partyBCccd || "........................"}</strong>; Ngày cấp: {partyBCccdDate || "..../..../........"}; Nơi cấp: {partyBCccdPlace}
+                  </p>
+                  <p>- Địa chỉ thường trú: {partyBAddress || "..........................................................................................."}</p>
+                  <p>
+                    - Số điện thoại: <strong>{partyBPhone || "........................"}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <p className="italic mb-3">
+                Hai bên cùng thỏa thuận và ký kết hợp đồng thuê phòng trọ với các điều khoản sau:
+              </p>
+
+              {/* Điều 1: Thông tin chung (Phần 1) */}
+              <div className="space-y-2 text-justify">
+                <p className="font-bold">Điều 1: Thông tin chung</p>
+                <div className="pl-3 space-y-1.5">
+                  <p>- Địa chỉ phòng trọ: {roomAddress}</p>
+                  <p>
+                    - Phòng trọ số: <strong>{room.code}</strong>
+                  </p>
+                  <p>- Diện tích: {roomArea}</p>
+                  <p>
+                    - Giá thuê: <strong>{formatVND(monthlyPrice)} VNĐ/tháng</strong>, giá thuê không bao gồm tiền điện, tiền nước và các khoản chi phí khác phát sinh do bên thuê sử dụng.
+                  </p>
+                  <p>
+                    - Thời gian thuê: <strong>{leaseMonths} tháng</strong>, thời gian tính tiền thuê từ ngày <strong>{leaseStartDate}</strong> đến ngày <strong>{leaseEndDate}</strong>.
+                  </p>
+                  <p>
+                    - Khi hết thời hạn thuê, nếu hai bên có nhu cầu tiếp tục thuê, sẽ ký hợp đồng mới hoặc gia hạn hợp đồng hiện tại.
+                  </p>
+                  <p>
+                    - Tiền cọc: <strong>{formatVND(depositAmount)} VNĐ</strong> (tương đương {Math.round(depositAmount / (monthlyPrice || 1))} tháng tiền thuê).
+                  </p>
+                  <p>
+                    - Tiền điện: <strong>{formatVND(electricPrice)} VNĐ/kWh</strong>, tính theo chỉ số công tơ, thanh toán vào cuối các tháng.
+                  </p>
+                  <p>
+                    - Tiền nước: <strong>{formatVND(waterPrice)} VNĐ/m³</strong>.
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Điều 2: Quyền và nghĩa vụ */}
-            <div className="space-y-2 mb-4 text-justify">
-              <p className="font-bold">Điều 2: Quyền và nghĩa vụ của các bên</p>
-              <div className="pl-3 space-y-1.5">
-                <p className="font-bold">2.1. Bên A có quyền và nghĩa vụ:</p>
-                <p>- Cung cấp phòng trọ và nội thất trong tình trạng tốt.</p>
-                <p>- Không tự ý tăng giá thuê khi hợp đồng còn hiệu lực.</p>
-                <p>- Nhận tiền thuê đúng thời hạn.</p>
+            {/* TRANG 2 */}
+            <div
+              className="page-container max-w-[760px] mx-auto bg-white p-8 sm:p-12 shadow-md rounded-lg text-slate-900 leading-relaxed text-[13pt]"
+              style={{ fontFamily: "'Times New Roman', Times, serif" }}
+            >
+              <div className="space-y-2 text-justify mb-4">
+                <div className="pl-3 space-y-1.5">
+                  <p>
+                    - Với phòng có trang bị máy lạnh, Bên A chịu trách nhiệm bảo trì và định kỳ vệ sinh miễn phí thời gian 06 (Sáu) tháng/ 1 lần. Nếu bên B có phát sinh vệ sinh máy ngoài lịch định kỳ, Bên A sẽ hỗ trợ gọi thợ máy, chi phí do bên B chi trả.
+                  </p>
+                  <p>
+                    - Khi có sự cố nghẹt cống, tắc cống, tràn cống xảy ra: nếu nguyên nhân do Bên B thì Bên B phải thanh toán cho Bên A chi phí sửa chữa và chi phí sẽ được thông báo cụ thể khi sửa chữa.
+                  </p>
+                  <p>
+                    - Hình thức thanh toán: Tiền mặt hoặc chuyển khoản vào thông tin sau:
+                  </p>
+                  <div className="bank-box my-2 p-2.5 border border-black rounded">
+                    <p>Họ và Tên: <strong>{bankOwner}</strong></p>
+                    <p>Số tài khoản: <strong>{bankAccount || "...................................."}</strong> tại Ngân hàng <strong>{bankName || "...................................."}</strong></p>
+                  </div>
+                  <p>
+                    - Bên B sẽ thanh toán tiền thuê phòng cho bên A vào <strong>ngày 05 hàng tháng</strong> cùng với tiền điện và tiền nước. Nếu quá hạn trễ 3 ngày so với thời gian thanh toán và để tình trạng thanh toán trễ quá 3 lần, Bên A có quyền đơn phương chấm dứt hợp đồng và lấy lại phòng (trường hợp xấu nhất buộc phải cắt ổ khoá và không phải chịu trách nhiệm về tài sản trong phòng), Bên B không được quyền khiếu nại và mất 100% số tiền đã cọc.
+                  </p>
 
-                <p className="font-bold pt-1">2.2. Bên B có quyền và nghĩa vụ:</p>
-                <p>- Thanh toán đầy đủ tiền theo đúng thỏa thuận.</p>
-                <p>- Sử dụng phòng trọ đúng mục đích, không cho thuê lại trừ khi có sự đồng ý của bên A.</p>
-                <p>- Bảo quản các trang thiết bị và cơ sở vật chất của Bên A trang bị cho ban đầu (làm hỏng phải sửa, mất phải đền).</p>
-                <p>- Đảm bảo các thiết bị và sửa chữa các hư hỏng trong phòng trong khi sử dụng. Nếu không sửa chữa thì khi trả phòng, Bên A sẽ trừ vào tiền đặt cọc, giá trị cụ thể được tính theo giá thị trường.</p>
-                <p>- Nếu có nhu cầu sửa chữa, cải tạo kiến trúc phòng hoặc trang trí ảnh hưởng tới tường, cột, nền phải trao đổi với Bên A để được thống nhất.</p>
-                <p>- Luôn có ý thức giữ gìn vệ sinh trong và ngoài khu vực phòng trọ.</p>
-                <p>- Bên B phải chấp hành mọi quy định của pháp luật Nhà nước, quy định của địa phương và quy định thuê phòng ở Điều 3 của Hợp đồng.</p>
+                  {/* Furniture Items */}
+                  <p className="font-semibold pt-1">- Nội thất trang bị sẵn:</p>
+                  <div className="pl-4 space-y-1">
+                    {furnitureItems.length > 0 ? (
+                      furnitureItems.map((item, idx) => (
+                        <p key={idx}>
+                          {idx + 1}. {item}: 01 cái, hoạt động bình thường.
+                        </p>
+                      ))
+                    ) : (
+                      <>
+                        <p>1. Máy lạnh: 01 cái, hoạt động bình thường.</p>
+                        <p>2. Bếp hồng ngoại: ........ cái, hoạt động bình thường.</p>
+                        <p>3. Máy nước nóng năng lượng: .......... hoạt động bình thường.</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Điều 2: Quyền và nghĩa vụ */}
+              <div className="space-y-2 mb-4 text-justify">
+                <p className="font-bold">Điều 2: Quyền và nghĩa vụ của các bên</p>
+                <div className="pl-3 space-y-1.5">
+                  <p className="font-bold">2.1. Bên A có quyền và nghĩa vụ:</p>
+                  <p>- Cung cấp phòng trọ và nội thất trong tình trạng tốt.</p>
+                  <p>- Không tự ý tăng giá thuê khi hợp đồng còn hiệu lực.</p>
+                  <p>- Nhận tiền thuê đúng thời hạn.</p>
+
+                  <p className="font-bold pt-1">2.2. Bên B có quyền và nghĩa vụ:</p>
+                  <p>- Thanh toán đầy đủ tiền theo đúng thỏa thuận.</p>
+                  <p>- Sử dụng phòng trọ đúng mục đích, không cho thuê lại trừ khi có sự đồng ý của bên A.</p>
+                  <p>- Bảo quản các trang thiết bị và cơ sở vật chất của Bên A trang bị cho ban đầu (làm hỏng phải sửa, mất phải đền).</p>
+                  <p>- Đảm bảo các thiết bị và sửa chữa các hư hỏng trong phòng trong khi sử dụng. Nếu không sửa chữa thì khi trả phòng, Bên A sẽ trừ vào tiền đặt cọc, giá trị cụ thể được tính theo giá thị trường.</p>
+                  <p>- Nếu có nhu cầu sửa chữa, cải tạo kiến trúc phòng hoặc trang trí ảnh hưởng tới tường, cột, nền phải trao đổi với Bên A để được thống nhất.</p>
+                  <p>- Luôn có ý thức giữ gìn vệ sinh trong và ngoài khu vực phòng trọ.</p>
+                  <p>- Bên B phải chấp hành mọi quy định của pháp luật Nhà nước, quy định của địa phương và quy định thuê phòng ở Điều 3 của Hợp đồng.</p>
+                </div>
+              </div>
+
+              {/* Điều 3: Tiêu đề mở đầu */}
+              <div className="text-justify">
+                <p className="font-bold">Điều 3: Nội quy thuê phòng</p>
               </div>
             </div>
 
-            {/* Điều 3: Nội quy thuê phòng */}
-            <div className="space-y-2 mb-4 text-justify">
-              <p className="font-bold">Điều 3: Nội quy thuê phòng</p>
-              <div className="pl-3 space-y-1">
-                <p>- Cấm tổ chức ăn nhậu, tụ tập tham gia các hoạt động cờ bạc, cho vay, đánh bài, số đề, đánh nhau, mua bán, tàng trữ và sử dụng trái phép các chất ma túy.</p>
-                <p>- Bên B không được tiếp khách quá 23h. Trường hợp tự ý cho người ở lại qua đêm nếu Công an kiểm tra thì Bên B sẽ phải tự chịu trách nhiệm (nếu bị phạt).</p>
-                <p>- Bên B phải tôn trọng giờ nghỉ trưa, đặc biệt là sau 23h không được tổ chức tiệc tùng tại nhà trọ gây mất an ninh trật tự, ảnh hưởng những người thuê còn lại.</p>
-                <p>- Xe ra vào chú ý giờ giấc, tránh rồ ga, nẹt pô. Không được gây hấn, nói tục chửi thề hoặc có thái độ không hợp tác với nhân viên quản lý.</p>
-                <p>- Không được vứt rác, xả nước, quăng đồ vật bừa bãi ngoài hành lang và sân trước phòng, giữ vệ sinh chung, rác thải phải để tập trung đúng nơi quy định.</p>
-                <p>- Bảo quản, giữ gìn và không thay đổi, xê dịch tài sản của phòng ở.</p>
-                <p>- Không được khoan tường, không dán tường bằng vật liệu xốp dính, keo dính.</p>
-                <p>- Bên B vi phạm ANTT khu vực (đánh nhau, tụ tập ăn nhậu,.....) và các hành vi vi phạm pháp luật (tàng trữ chất cấm, sử dụng ma túy, mại dâm,.....) có thông báo điều tra hoặc quyết định không cho lưu trú - tạm trú của Cơ quan chức năng có thẩm quyền.</p>
-                <p>- Trường hợp Bên B liên quan những khoản vay không thể chi trả từ tổ chức - cá nhân cho vay nặng lãi có hành vi đe dọa - bạo lực.</p>
-                <p>- Trường hợp Bên B không chấp hành những nội quy trên Bên A được quyền lấy lại phòng. Bên B phải dọn đi trong thời hạn Bên A yêu cầu và mất 100% số tiền đã cọc.</p>
+            {/* TRANG 3 */}
+            <div
+              className="page-container max-w-[760px] mx-auto bg-white p-8 sm:p-12 shadow-md rounded-lg text-slate-900 leading-relaxed text-[13pt]"
+              style={{ fontFamily: "'Times New Roman', Times, serif" }}
+            >
+              {/* Tiếp tục Điều 3 */}
+              <div className="space-y-1.5 text-justify mb-4">
+                <div className="pl-3 space-y-1">
+                  <p>- Cấm tổ chức ăn nhậu, tụ tập tham gia các hoạt động cờ bạc, cho vay, đánh bài, số đề, đánh nhau, mua bán, tàng trữ và sử dụng trái phép các chất ma túy.</p>
+                  <p>- Bên B không được tiếp khách quá 23h. Trường hợp tự ý cho người ở lại qua đêm nếu Công an kiểm tra thì Bên B sẽ phải tự chịu trách nhiệm (nếu bị phạt).</p>
+                  <p>- Bên B phải tôn trọng giờ nghỉ trưa, đặc biệt là sau 23h không được tổ chức tiệc tùng tại nhà trọ gây mất an ninh trật tự, ảnh hưởng những người thuê còn lại.</p>
+                  <p>- Xe ra vào chú ý giờ giấc, tránh rồ ga, nẹt pô. Không được gây hấn, nói tục chửi thề hoặc có thái độ không hợp tác với nhân viên quản lý.</p>
+                  <p>- Không được vứt rác, xả nước, quăng đồ vật bừa bãi ngoài hành lang và sân trước phòng, giữ vệ sinh chung, rác thải phải để tập trung đúng nơi quy định.</p>
+                  <p>- Bảo quản, giữ gìn và không thay đổi, xê dịch tài sản của phòng ở.</p>
+                  <p>- Không được khoan tường, không dán tường bằng vật liệu xốp dính, keo dính.</p>
+                  <p>- Bên B vi phạm ANTT khu vực (đánh nhau, tụ tập ăn nhậu,.....) và các hành vi vi phạm pháp luật (tàng trữ chất cấm, sử dụng ma túy, mại dâm,.....) có thông báo điều tra hoặc quyết định không cho lưu trú - tạm trú của Cơ quan chức năng có thẩm quyền.</p>
+                  <p>- Trường hợp Bên B liên quan những khoản vay không thể chi trả từ tổ chức - cá nhân cho vay nặng lãi có hành vi đe dọa - bạo lực.</p>
+                  <p>- Trường hợp Bên B không chấp hành những nội quy trên Bên A được quyền lấy lại phòng. Bên B phải dọn đi trong thời hạn Bên A yêu cầu và mất 100% số tiền đã cọc.</p>
+                </div>
               </div>
-            </div>
 
-            {/* Điều 4: Chấm dứt hợp đồng */}
-            <div className="space-y-2 mb-4 text-justify">
-              <p className="font-bold">Điều 4: Chấm dứt hợp đồng</p>
-              <div className="pl-3 space-y-1">
-                <p>- Hợp đồng chấm dứt khi hết hạn hoặc do hai bên thỏa thuận.</p>
-                <p>- Trường hợp Bên B chấm dứt hợp đồng trước thời hạn, bên B có quyền chuyển giao/ cho thuê lại cho bên mới thì Bên B sẽ nhận lại được tiền cọc.</p>
-                <p>- Trường hợp Bên B chấm dứt hợp đồng trước thời hạn mà không chuyển giao/cho thuê lại cho bên mới thì Bên B sẽ mất 100 % số tiền cọc và Bên A sẽ nhận lại phòng ở đã cho Bên B thuê. Ngoài ra Bên B phải có trách nhiệm thanh toán các khoản chi phí dịch vụ (điện, nước…) khi Bên B sử dụng phòng ở.</p>
-                <p>- Trong cả 2 trường hợp, Bên B phải báo trước cho Bên A 01 tháng trước khi chấm dứt hợp đồng.</p>
-                <p>- Nếu Bên A đơn phương chấm dứt hợp đồng mà không có lý do chính đáng, phải hoàn lại tiền cọc và bồi thường một khoản tương đương tiền cọc.</p>
+              {/* Điều 4: Chấm dứt hợp đồng */}
+              <div className="space-y-1.5 mb-4 text-justify">
+                <p className="font-bold">Điều 4: Chấm dứt hợp đồng</p>
+                <div className="pl-3 space-y-1">
+                  <p>- Hợp đồng chấm dứt khi hết hạn hoặc do hai bên thỏa thuận.</p>
+                  <p>- Trường hợp Bên B chấm dứt hợp đồng trước thời hạn, bên B có quyền chuyển giao/ cho thuê lại cho bên mới thì Bên B sẽ nhận lại được tiền cọc.</p>
+                  <p>- Trường hợp Bên B chấm dứt hợp đồng trước thời hạn mà không chuyển giao/cho thuê lại cho bên mới thì Bên B sẽ mất 100 % số tiền cọc và Bên A sẽ nhận lại phòng ở đã cho Bên B thuê. Ngoài ra Bên B phải có trách nhiệm thanh toán các khoản chi phí dịch vụ (điện, nước…) khi Bên B sử dụng phòng ở.</p>
+                  <p>- Trong cả 2 trường hợp, Bên B phải báo trước cho Bên A 01 tháng trước khi chấm dứt hợp đồng.</p>
+                  <p>- Nếu Bên A đơn phương chấm dứt hợp đồng mà không có lý do chính đáng, phải hoàn lại tiền cọc và bồi thường một khoản tương đương tiền cọc.</p>
+                </div>
               </div>
-            </div>
 
-            {/* Điều 5: Điều khoản chung */}
-            <div className="space-y-2 mb-8 text-justify">
-              <p className="font-bold">Điều 5: Điều khoản chung</p>
-              <div className="pl-3 space-y-1">
-                <p>- Hợp đồng có hiệu lực kể từ ngày ký.</p>
-                <p>- Mọi tranh chấp phát sinh sẽ được giải quyết thông qua thương lượng hoặc theo quy định của pháp luật.</p>
-                <p>- Hợp đồng được lập thành hai bản, mỗi bên giữ một bản có giá trị pháp lý như nhau.</p>
+              {/* Điều 5: Điều khoản chung */}
+              <div className="space-y-1.5 mb-6 text-justify">
+                <p className="font-bold">Điều 5: Điều khoản chung</p>
+                <div className="pl-3 space-y-1">
+                  <p>- Hợp đồng có hiệu lực kể từ ngày ký.</p>
+                  <p>- Mọi tranh chấp phát sinh sẽ được giải quyết thông qua thương lượng hoặc theo quy định của pháp luật.</p>
+                  <p>- Hợp đồng được lập thành hai bản, mỗi bên giữ một bản có giá trị pháp lý như nhau.</p>
+                </div>
               </div>
-            </div>
 
-            {/* Signatures */}
-            <div className="signatures-container avoid-break pt-4 pb-12 font-serif">
-              <div className="signature-col">
-                <p className="font-bold uppercase text-sm">Bên A</p>
-                <p className="text-xs italic text-slate-500">(ký, ghi rõ họ tên)</p>
-                <div className="signature-space" />
-                <p className="font-bold">{partyAName}</p>
-              </div>
-              <div className="signature-col">
-                <p className="font-bold uppercase text-sm">Bên B</p>
-                <p className="text-xs italic text-slate-500">(ký, ghi rõ họ tên)</p>
-                <div className="signature-space" />
-                <p className="font-bold">{partyBName || "...................................."}</p>
+              {/* Signatures */}
+              <div className="signatures-container pt-2 pb-8 font-serif">
+                <div className="signature-col">
+                  <p className="font-bold uppercase text-sm">Bên A</p>
+                  <p className="text-xs italic text-slate-500">(ký, ghi rõ họ tên)</p>
+                  <div className="signature-space" />
+                  <p className="font-bold">{partyAName}</p>
+                </div>
+                <div className="signature-col">
+                  <p className="font-bold uppercase text-sm">Bên B</p>
+                  <p className="text-xs italic text-slate-500">(ký, ghi rõ họ tên)</p>
+                  <div className="signature-space" />
+                  <p className="font-bold">{partyBName || "...................................."}</p>
+                </div>
               </div>
             </div>
           </div>
