@@ -28,7 +28,7 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
     const currentMonth = month || new Date().toISOString().substring(0, 7);
     const supabase = await createClient();
 
-    // Fetch rooms, active tenants, invoices, and expenses in parallel for maximum speed
+    // Fetch rooms, all tenants (including moved out), invoices, and expenses in parallel
     const [
       { data: roomsData, error: roomsError },
       { data: tenantsData },
@@ -39,7 +39,6 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
       supabase
         .from("tenants")
         .select("*")
-        .eq("status", "active")
         .order("created_at", { ascending: true }),
       supabase.from("invoices").select("*").eq("month", currentMonth),
       supabase.from("expenses").select("*").eq("month", currentMonth),
@@ -105,21 +104,63 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
     const netProfit = totalRevenue - totalExpenses;
     const actualCashflow = collectedAmount - paidExpenses;
 
-    // Compute room occupancy based on actual active tenants
-    const totalRooms = rooms.length;
-    const rentedRooms = rooms.filter((r) => {
-      const roomTenants = allTenants.filter((t) => t.room_id === r.id);
-      return roomTenants.length > 0 || r.status === "rented";
-    }).length;
-    const emptyRooms = Math.max(0, totalRooms - rentedRooms);
-    const occupancyRate = totalRooms > 0 ? Math.round((rentedRooms / totalRooms) * 100) : 0;
+    // Calculate time boundaries for the selected month to evaluate historical occupancy
+    const [yearStr, monthStr] = currentMonth.split("-");
+    const year = parseInt(yearStr, 10);
+    const monthNum = parseInt(monthStr, 10);
+    const lastDay = new Date(year, monthNum, 0).getDate();
+    const monthStartDate = `${currentMonth}-01`;
+    const monthEndDate = `${currentMonth}-${String(lastDay).padStart(2, "0")}`;
+    const todayMonth = new Date().toISOString().substring(0, 7);
+    const isCurrentOrFuture = currentMonth >= todayMonth;
 
-    // Build room cards with billing badge
+    // Build room cards with historical occupancy and billing badge for currentMonth
     const roomCards: DashboardRoomCard[] = rooms.map((room) => {
-      const roomTenants = allTenants.filter((t) => t.room_id === room.id);
-      const isRoomOccupied = roomTenants.length > 0;
-      const lead = roomTenants.find((t) => t.is_lead) || roomTenants[0] || null;
+      // 1. Invoice of this room in selected month
       const invoice = invoices.find((inv) => inv.room_id === room.id) || null;
+
+      // 2. Tenants residing in this room during currentMonth
+      const monthTenants = allTenants.filter((t) => {
+        if (t.room_id !== room.id) return false;
+        const tStart = t.start_date
+          ? t.start_date.substring(0, 10)
+          : t.created_at
+          ? t.created_at.substring(0, 10)
+          : "";
+        const tEnd = t.end_date ? t.end_date.substring(0, 10) : null;
+
+        // Tenant must have moved in on or before the end of the selected month
+        const hasMovedIn = !tStart || tStart <= monthEndDate;
+        // Tenant must not have moved out before the start of the selected month
+        const hasNotMovedOut = !tEnd
+          ? t.status === "active" || (!isCurrentOrFuture && hasMovedIn)
+          : tEnd >= monthStartDate;
+
+        return hasMovedIn && hasNotMovedOut;
+      });
+
+      // 3. Evaluate whether room was occupied in this specific month
+      let isRoomOccupied = false;
+      if (invoice !== null) {
+        // An invoice in this month confirms the room was occupied/billed
+        isRoomOccupied = true;
+      } else if (monthTenants.length > 0) {
+        isRoomOccupied = true;
+      } else if (isCurrentOrFuture && room.status === "rented") {
+        isRoomOccupied = true;
+      } else {
+        isRoomOccupied = false;
+      }
+
+      // 4. Identify lead tenant for this specific month
+      const lead =
+        monthTenants.find((t) => t.is_lead) ||
+        monthTenants[0] ||
+        (isRoomOccupied
+          ? allTenants.filter((t) => t.room_id === room.id).find((t) => t.is_lead) ||
+            allTenants.filter((t) => t.room_id === room.id)[0] ||
+            null
+          : null);
 
       let billingStatus: "paid" | "pending" | "empty" = "empty";
       let billingBadgeLabel: "Đã thu" | "Chưa thu" | "Trống" = "Trống";
@@ -136,24 +177,32 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
           billingBadgeLabel = "Chưa thu";
         }
       } else {
-        // Room is rented / occupied, but no invoice billed yet this month
+        // Room was rented/occupied in this month, but invoice has not been generated yet
         billingStatus = "pending";
         billingBadgeLabel = "Chưa thu";
       }
+
+      const tenantsCount = isRoomOccupied ? Math.max(monthTenants.length, lead ? 1 : 0) : 0;
 
       return {
         id: room.id,
         code: room.code,
         base_price: room.base_price,
         status: isRoomOccupied ? "rented" : "empty",
-        activeTenantsCount: roomTenants.length,
-        leadTenantName: lead ? lead.name : null,
-        leadTenantPhone: lead ? lead.phone : null,
+        activeTenantsCount: tenantsCount,
+        leadTenantName: isRoomOccupied && lead ? lead.name : null,
+        leadTenantPhone: isRoomOccupied && lead ? lead.phone : null,
         invoice,
         billingStatus,
         billingBadgeLabel,
       };
     });
+
+    // Compute room occupancy KPIs based on room cards in this specific month
+    const totalRooms = rooms.length;
+    const rentedRooms = roomCards.filter((r) => r.status === "rented").length;
+    const emptyRooms = Math.max(0, totalRooms - rentedRooms);
+    const occupancyRate = totalRooms > 0 ? Math.round((rentedRooms / totalRooms) * 100) : 0;
 
     roomCards.sort(compareRoomCodes);
 

@@ -199,5 +199,62 @@ describe("Milestone 3 Empirical Gate Verification Suite", () => {
       expect(cardR2?.billingBadgeLabel).toBe("Chưa thu");
       expect(cardR3?.billingBadgeLabel).toBe("Trống");
     });
+
+    it("correctly calculates historical occupancy and tenant info when viewing past months", async () => {
+      // 1. Reset and create 2 rooms
+      mockDbStore.reset();
+      const r1 = (await createRoom({ code: "P301", base_price: 2000000 })).room!;
+      const r2 = (await createRoom({ code: "P302", base_price: 2500000 })).room!;
+
+      // 2. Add tenant in P301 who stayed only in May-June 2026
+      const tenantPast = (
+        await addTenant({
+          room_id: r1.id,
+          name: "Khach Thang 5",
+          start_date: "2026-05-01",
+        })
+      ).tenant!;
+      await markTenantMovedOut(tenantPast.id, "2026-06-30");
+
+      // 3. Add tenant in P302 who only starts in September 2026
+      await addTenant({
+        room_id: r2.id,
+        name: "Khach Thang 9",
+        start_date: "2026-09-01",
+      });
+
+      // 4. Check past month May 2026 (2026-05):
+      // P301 had Khach Thang 5, P302 had no one yet
+      const dashMay = await getDashboardData("2026-05");
+      expect(dashMay.stats.totalRooms).toBe(2);
+      expect(dashMay.stats.rentedRooms).toBe(1);
+      expect(dashMay.stats.emptyRooms).toBe(1);
+      expect(dashMay.stats.occupancyRate).toBe(50);
+
+      const cardMayR1 = dashMay.rooms.find((r) => r.id === r1.id);
+      const cardMayR2 = dashMay.rooms.find((r) => r.id === r2.id);
+      expect(cardMayR1?.status).toBe("rented");
+      expect(cardMayR1?.leadTenantName).toBe("Khach Thang 5");
+      expect(cardMayR2?.status).toBe("empty");
+      expect(cardMayR2?.billingBadgeLabel).toBe("Trống");
+
+      // 5. Check past month July 2026 (2026-07):
+      // Both rooms were empty in July 2026!
+      const dashJuly = await getDashboardData("2026-07");
+      expect(dashJuly.stats.totalRooms).toBe(2);
+      expect(dashJuly.stats.rentedRooms).toBe(0);
+      expect(dashJuly.stats.emptyRooms).toBe(2);
+      expect(dashJuly.stats.occupancyRate).toBe(0);
+
+      const cardJulyR1 = dashJuly.rooms.find((r) => r.id === r1.id);
+      const cardJulyR2 = dashJuly.rooms.find((r) => r.id === r2.id);
+      expect(cardJulyR1?.status).toBe("empty");
+      expect(cardJulyR1?.billingBadgeLabel).toBe("Trống");
+      expect(cardJulyR1?.leadTenantName).toBeNull();
+
+      expect(cardJulyR2?.status).toBe("empty");
+      expect(cardJulyR2?.billingBadgeLabel).toBe("Trống");
+      expect(cardJulyR2?.leadTenantName).toBeNull();
+    });
   });
 });
