@@ -154,6 +154,27 @@ describe("Empirical Challenger M1: Schema Constraints & Mock DB Stress Tests", (
 
       expect(priceDescRooms?.map((r) => r.code)).toEqual(["P102", "P103", "P101"]);
     });
+
+    it("persists room-specific notes correctly", async () => {
+      const { data: newRoom } = await mockSupabase
+        .from("rooms")
+        .insert({ code: "P999", base_price: 3000000, status: "empty" })
+        .select()
+        .single();
+
+      expect(newRoom).toBeDefined();
+
+      // Update note
+      const { data: updated, error } = await mockSupabase
+        .from("rooms")
+        .update({ note: "Khách hẹn đóng thêm cọc ngày 15, máy lạnh mới bảo trì" })
+        .eq("id", newRoom!.id)
+        .select()
+        .single();
+
+      expect(error).toBeNull();
+      expect(updated?.note).toBe("Khách hẹn đóng thêm cọc ngày 15, máy lạnh mới bảo trì");
+    });
   });
 
   // =========================================================================

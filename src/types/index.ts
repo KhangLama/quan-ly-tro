@@ -11,12 +11,15 @@ export type SettingUpdate = Database["public"]["Tables"]["settings"]["Update"] &
 
 export type Room = Database["public"]["Tables"]["rooms"]["Row"] & {
   furniture?: string[];
+  note?: string;
 };
 export type RoomInsert = Database["public"]["Tables"]["rooms"]["Insert"] & {
   furniture?: string[];
+  note?: string;
 };
 export type RoomUpdate = Database["public"]["Tables"]["rooms"]["Update"] & {
   furniture?: string[];
+  note?: string;
 };
 
 export type Tenant = Database["public"]["Tables"]["tenants"]["Row"];

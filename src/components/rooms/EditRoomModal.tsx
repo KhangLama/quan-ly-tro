@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { updateRoom } from "@/actions/rooms";
 import { getSettings } from "@/actions/settings";
 import { DEFAULT_FURNITURE_CATALOG } from "@/lib/constants/furniture";
-import { Edit2, Check, Building2, Armchair } from "lucide-react";
+import { Edit2, Check, Building2, Armchair, StickyNote } from "lucide-react";
 import type { Room } from "@/types";
 
 interface EditRoomModalProps {
@@ -27,6 +27,7 @@ export function EditRoomModal({
   const [basePrice, setBasePrice] = useState("");
   const [catalog, setCatalog] = useState<string[]>(DEFAULT_FURNITURE_CATALOG);
   const [selectedFurniture, setSelectedFurniture] = useState<string[]>([]);
+  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,6 +66,16 @@ export function EditRoomModal({
         } catch {}
       }
       setSelectedFurniture(Array.isArray(initialFurn) ? initialFurn : []);
+
+      // Load room note
+      let initialNote = (room as any)?.note || "";
+      if (!initialNote && typeof window !== "undefined") {
+        try {
+          const cachedNote = localStorage.getItem("room_note_" + room.id);
+          if (cachedNote) initialNote = cachedNote;
+        } catch {}
+      }
+      setNote(initialNote);
     }
   }, [room, isOpen]);
 
@@ -97,6 +108,7 @@ export function EditRoomModal({
       code: code.trim(),
       base_price: Number(basePrice),
       furniture: selectedFurniture,
+      note: note.trim(),
     });
 
     if (typeof window !== "undefined") {
@@ -105,6 +117,7 @@ export function EditRoomModal({
           "room_furniture_" + room.id,
           JSON.stringify(selectedFurniture)
         );
+        localStorage.setItem("room_note_" + room.id, note.trim());
       } catch {}
     }
 
@@ -225,6 +238,21 @@ export function EditRoomModal({
               );
             })}
           </div>
+        </div>
+
+        {/* Room Note */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <StickyNote className="w-3.5 h-3.5 text-amber-500" />
+            <span>Ghi chú riêng cho phòng</span>
+          </label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            placeholder="Lưu ý riêng cho phòng này (ví dụ: khách hẹn cọc, đồ gửi lại, chìa khóa dự phòng...)"
+            className="w-full text-xs rounded-xl border border-slate-200 p-2.5 text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden resize-y min-h-[60px]"
+          />
         </div>
 
         <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">

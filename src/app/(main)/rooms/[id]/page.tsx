@@ -27,6 +27,7 @@ import { InvoiceHistory } from "@/components/rooms/InvoiceHistory";
 import { AddTenantModal } from "@/components/rooms/AddTenantModal";
 import { EditRoomModal } from "@/components/rooms/EditRoomModal";
 import { RoomContractModal } from "@/components/rooms/RoomContractModal";
+import { RoomNoteCard } from "@/components/rooms/RoomNoteCard";
 import { getRoomById, deleteRoom, type GetRoomDetailsResult } from "@/actions/rooms";
 import { getSettings } from "@/actions/settings";
 import { formatVND } from "@/lib/utils";
@@ -182,63 +183,76 @@ export default function RoomDetailPage() {
         </div>
       </Card>
 
-      {/* Furniture / Amenities Card */}
-      {(() => {
-        let furnitureList: string[] = (room as any)?.furniture || [];
-        if ((!furnitureList || furnitureList.length === 0) && typeof window !== "undefined") {
-          try {
-            const cached = localStorage.getItem("room_furniture_" + room.id);
-            if (cached) {
-              const parsed = JSON.parse(cached);
-              if (Array.isArray(parsed)) furnitureList = parsed;
-            }
-          } catch {}
-        }
+      {/* Furniture & Room Note Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+        {/* Furniture / Amenities Card */}
+        {(() => {
+          let furnitureList: string[] = (room as any)?.furniture || [];
+          if ((!furnitureList || furnitureList.length === 0) && typeof window !== "undefined") {
+            try {
+              const cached = localStorage.getItem("room_furniture_" + room.id);
+              if (cached) {
+                const parsed = JSON.parse(cached);
+                if (Array.isArray(parsed)) furnitureList = parsed;
+              }
+            } catch {}
+          }
 
-        return (
-          <Card className="p-3.5 bg-white border-slate-200/80 shadow-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 uppercase tracking-wider">
-                <Armchair className="w-4 h-4 text-indigo-600" />
-                <span>Nội thất & Tiện ích trong phòng ({furnitureList.length})</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsEditRoomModalOpen(true)}
-                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
-              >
-                <Edit2 className="w-3 h-3" />
-                <span>Sửa nội thất</span>
-              </button>
-            </div>
-
-            {furnitureList.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 pt-0.5">
-                {furnitureList.map((item) => (
-                  <span
-                    key={item}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold bg-indigo-50/80 text-indigo-800 border border-indigo-100"
+          return (
+            <Card className="p-3.5 bg-white border-slate-200/80 shadow-xs space-y-2 h-full flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    <Armchair className="w-4 h-4 text-indigo-600" />
+                    <span>Nội thất trong phòng ({furnitureList.length})</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditRoomModalOpen(true)}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
                   >
-                    <Check className="w-3 h-3 text-indigo-600 stroke-[2.5]" />
-                    <span>{item}</span>
-                  </span>
-                ))}
+                    <Edit2 className="w-3 h-3" />
+                    <span>Sửa nội thất</span>
+                  </button>
+                </div>
+
+                <div className="pt-2">
+                  {furnitureList.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {furnitureList.map((item) => (
+                        <span
+                          key={item}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold bg-indigo-50/80 text-indigo-800 border border-indigo-100"
+                        >
+                          <Check className="w-3 h-3 text-indigo-600 stroke-[2.5]" />
+                          <span>{item}</span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => setIsEditRoomModalOpen(true)}
+                      className="cursor-pointer border border-dashed border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/20 rounded-xl p-3 text-center transition-all"
+                    >
+                      <p className="text-xs text-slate-400 italic">
+                        Chưa thiết lập nội thất. Bấm để thêm ngay...
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            ) : (
-              <div className="text-xs text-slate-400 italic py-1 flex items-center justify-between">
-                <span>Chưa thiết lập danh sách nội thất cho phòng này.</span>
-                <button
-                  type="button"
-                  onClick={() => setIsEditRoomModalOpen(true)}
-                  className="text-indigo-600 font-semibold hover:underline not-italic ml-2"
-                >
-                  + Thêm nội thất ngay
-                </button>
-              </div>
-            )}
-          </Card>
-        );
-      })()}
+            </Card>
+          );
+        })()}
+
+        {/* Room Note Card */}
+        <RoomNoteCard
+          roomId={room.id}
+          roomCode={room.code}
+          initialNote={(room as any)?.note || ""}
+          onNoteUpdated={fetchDetails}
+        />
+      </div>
 
       {/* Desktop 2-Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
