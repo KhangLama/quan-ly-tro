@@ -70,18 +70,13 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
     const roomAmount = Math.max(0, data.basePrice - (data.discount || 0));
     const utilityAmount = Math.max(0, data.totalAmount - roomAmount);
 
-    const cleanMonth = data.month.includes("-")
-      ? `T${data.month.split("-")[1]}`
-      : data.month;
-
-    // Generate VietQR URLs
+    // Generate VietQR URLs (omitting description so the banking app applies its default transfer memo)
     const roomQrUrl = paymentConfig.room.accountNumber
       ? buildVietQRUrl({
           bankCode: paymentConfig.room.bank,
           accountNumber: paymentConfig.room.accountNumber,
           accountName: paymentConfig.room.accountName,
           amount: roomAmount,
-          description: `P${data.roomCode} TIEN PHONG ${cleanMonth}`,
         })
       : null;
 
@@ -91,7 +86,6 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
           accountNumber: paymentConfig.service.accountNumber,
           accountName: paymentConfig.service.accountName,
           amount: utilityAmount,
-          description: `P${data.roomCode} DIEN NUOC ${cleanMonth}`,
         })
       : null;
 
@@ -101,7 +95,6 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
           accountNumber: paymentConfig.room.accountNumber,
           accountName: paymentConfig.room.accountName,
           amount: data.totalAmount,
-          description: `P${data.roomCode} TT THANG ${cleanMonth}`,
         })
       : null;
 
@@ -295,11 +288,9 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
 
                 {/* Card 1: Tiền phòng (Top Card - Xanh Dương) */}
                 <div className="border-2 border-blue-600 rounded-xl p-2.5 bg-[#f0f7ff] shadow-xs">
-                  <div className="bg-blue-600 text-white font-extrabold text-[11px] uppercase py-1 px-2.5 rounded-md tracking-wider flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-1.5">
-                      <span>🏠 BƯỚC 1: THANH TOÁN TIỀN THUÊ PHÒNG</span>
-                    </span>
-                    <span className="text-[10px] font-normal opacity-90">Quét mã này trước</span>
+                  <div className="bg-blue-600 text-white font-bold text-[11px] uppercase py-1 px-2.5 rounded-md tracking-wider flex items-center justify-between mb-2">
+                    <span>BƯỚC 1: THANH TOÁN TIỀN PHÒNG</span>
+                    <span className="text-[10px] font-normal opacity-90">Quét trước</span>
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
@@ -315,9 +306,6 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                         {paymentConfig.room.accountName && (
                           <div className="truncate uppercase text-slate-700">Chủ TK: <strong>{paymentConfig.room.accountName}</strong></div>
                         )}
-                        <div className="text-blue-900 font-semibold bg-blue-100/90 px-1.5 py-0.5 rounded-sm text-[10px] inline-block mt-0.5">
-                          Cú pháp: P{data.roomCode} TIEN PHONG {cleanMonth}
-                        </div>
                       </div>
                     </div>
 
@@ -341,19 +329,16 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                 {/* Safety Buffer & Transition Divider */}
                 <div className="relative flex items-center justify-center my-1">
                   <div className="border-t-2 border-dashed border-slate-300 w-full"></div>
-                  <div className="absolute bg-white px-3 py-0.5 rounded-full border border-slate-300 text-[9.5px] font-bold text-slate-500 flex items-center gap-1 shadow-2xs">
-                    <span>✂️ Kéo máy xuống quét tiền điện nước</span>
-                    <span>⬇️</span>
+                  <div className="absolute bg-white px-3 py-0.5 rounded-full border border-slate-300 text-[9.5px] font-medium text-slate-500 shadow-2xs">
+                    Kéo xuống để quét tiếp tiền điện nước
                   </div>
                 </div>
 
                 {/* Card 2: Tiền điện nước (Bottom Card - Cam Hổ Phách) */}
                 <div className="border-2 border-amber-600 rounded-xl p-2.5 bg-[#fffaf5] shadow-xs">
-                  <div className="bg-amber-600 text-white font-extrabold text-[11px] uppercase py-1 px-2.5 rounded-md tracking-wider flex items-center justify-between mb-2">
-                    <span className="flex items-center gap-1.5">
-                      <span>⚡💧 BƯỚC 2: THANH TOÁN TIỀN ĐIỆN & NƯỚC</span>
-                    </span>
-                    <span className="text-[10px] font-normal opacity-90">Quét mã này sau</span>
+                  <div className="bg-amber-600 text-white font-bold text-[11px] uppercase py-1 px-2.5 rounded-md tracking-wider flex items-center justify-between mb-2">
+                    <span>BƯỚC 2: THANH TOÁN TIỀN ĐIỆN & NƯỚC</span>
+                    <span className="text-[10px] font-normal opacity-90">Quét sau</span>
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
@@ -369,9 +354,6 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                         {paymentConfig.service.accountName && (
                           <div className="truncate uppercase text-slate-700">Chủ TK: <strong>{paymentConfig.service.accountName}</strong></div>
                         )}
-                        <div className="text-amber-900 font-semibold bg-amber-100/90 px-1.5 py-0.5 rounded-sm text-[10px] inline-block mt-0.5">
-                          Cú pháp: P{data.roomCode} DIEN NUOC {cleanMonth}
-                        </div>
                       </div>
                     </div>
 
@@ -395,7 +377,7 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
             ) : (
               /* SINGLE QR MODE: 1 Unified Account for Total Amount */
               <div className="max-w-[300px] mx-auto border-2 border-black rounded-lg p-2.5 bg-slate-50 text-center shadow-2xs">
-                <div className="bg-slate-900 text-white font-extrabold text-[11px] uppercase py-1 px-2 rounded-xs tracking-wide mb-1.5">
+                <div className="bg-slate-900 text-white font-bold text-[11px] uppercase py-1 px-2 rounded-xs tracking-wide mb-1.5">
                   QUÉT MÃ VIETQR THANH TOÁN
                 </div>
 
@@ -420,9 +402,6 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                   {paymentConfig.room.accountName && (
                     <div className="truncate uppercase">Chủ TK: <strong>{paymentConfig.room.accountName}</strong></div>
                   )}
-                  <div className="text-slate-900 font-semibold bg-slate-200/90 px-1.5 py-0.5 rounded-xs text-[9.5px] truncate">
-                    Cú pháp: P{data.roomCode} TT THANG {cleanMonth}
-                  </div>
                 </div>
               </div>
             )}

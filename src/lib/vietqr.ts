@@ -158,7 +158,7 @@ export interface VietQRParams {
   accountNumber: string;
   accountName?: string;
   amount: number;
-  description: string;
+  description?: string;
 }
 
 /**
@@ -174,11 +174,14 @@ export function buildVietQRUrl({
   const cleanBank = (bankCode || "MB").trim().toUpperCase();
   const cleanAccount = (accountNumber || "").replace(/[^a-zA-Z0-9]/g, "");
   const cleanAmount = Math.max(0, Math.round(amount || 0));
-  const unaccentedDesc = removeVietnameseAccents(description);
-  const encodedDesc = encodeURIComponent(unaccentedDesc);
+  const unaccentedDesc = description ? removeVietnameseAccents(description) : "";
+  const encodedDesc = unaccentedDesc ? encodeURIComponent(unaccentedDesc) : "";
   const cleanName = accountName ? encodeURIComponent(removeVietnameseAccents(accountName).toUpperCase()) : "";
 
-  let url = `https://img.vietqr.io/image/${cleanBank}-${cleanAccount}-qr_only.png?amount=${cleanAmount}&addInfo=${encodedDesc}`;
+  let url = `https://img.vietqr.io/image/${cleanBank}-${cleanAccount}-qr_only.png?amount=${cleanAmount}`;
+  if (encodedDesc) {
+    url += `&addInfo=${encodedDesc}`;
+  }
   if (cleanName) {
     url += `&accountName=${cleanName}`;
   }
