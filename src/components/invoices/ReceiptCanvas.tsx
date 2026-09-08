@@ -1,5 +1,11 @@
 import React, { forwardRef } from "react";
 import { formatVND, cn } from "@/lib/utils";
+import {
+  parsePaymentAccounts,
+  buildVietQRUrl,
+  getBankDisplayName,
+  type PaymentAccountsConfig,
+} from "@/lib/vietqr";
 
 export interface ReceiptData {
   roomCode: string;
@@ -26,6 +32,7 @@ export interface ReceiptData {
   discount?: number;
   discountReason?: string;
   totalAmount: number;
+  paymentConfig?: PaymentAccountsConfig;
 }
 
 interface ReceiptCanvasProps {
@@ -49,6 +56,54 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
     const address =
       data.address || "325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ";
     const customerName = data.customerName || "Khách thuê";
+
+    // Payment and VietQR accounts resolution
+    const paymentConfig = data.paymentConfig || parsePaymentAccounts(data.bankInfo);
+    const isSplit = Boolean(
+      paymentConfig.split &&
+      paymentConfig.room.accountNumber &&
+      paymentConfig.service.accountNumber
+    );
+    const hasAccount = Boolean(paymentConfig.room.accountNumber);
+
+    // Calculate exact split amounts
+    const roomAmount = Math.max(0, data.basePrice - (data.discount || 0));
+    const utilityAmount = Math.max(0, data.totalAmount - roomAmount);
+
+    const cleanMonth = data.month.includes("-")
+      ? `T${data.month.split("-")[1]}`
+      : data.month;
+
+    // Generate VietQR URLs
+    const roomQrUrl = paymentConfig.room.accountNumber
+      ? buildVietQRUrl({
+          bankCode: paymentConfig.room.bank,
+          accountNumber: paymentConfig.room.accountNumber,
+          accountName: paymentConfig.room.accountName,
+          amount: roomAmount,
+          description: `P${data.roomCode} TIEN PHONG ${cleanMonth}`,
+        })
+      : null;
+
+    const serviceQrUrl = paymentConfig.service.accountNumber
+      ? buildVietQRUrl({
+          bankCode: paymentConfig.service.bank,
+          accountNumber: paymentConfig.service.accountNumber,
+          accountName: paymentConfig.service.accountName,
+          amount: utilityAmount,
+          description: `P${data.roomCode} DIEN NUOC ${cleanMonth}`,
+        })
+      : null;
+
+    const singleQrUrl = paymentConfig.room.accountNumber
+      ? buildVietQRUrl({
+          bankCode: paymentConfig.room.bank,
+          accountNumber: paymentConfig.room.accountNumber,
+          accountName: paymentConfig.room.accountName,
+          amount: data.totalAmount,
+          description: `P${data.roomCode} TT THANG ${cleanMonth}`,
+        })
+      : null;
 
     return (
       <div
@@ -217,19 +272,135 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
             <tr>
               <td className="border-r border-black p-2 font-bold italic">Ghi chú:</td>
               <td colSpan={4} className="p-2 text-xs text-slate-700 font-medium whitespace-pre-line leading-relaxed">
-                {data.receiptNote ? (
-                  <div className="whitespace-pre-line">{data.receiptNote}</div>
-                ) : data.bankInfo ? (
-                  <div>
-                    Thanh toán STK: <strong>{data.bankInfo}</strong> (Cú pháp: P{data.roomCode} TT thang {data.month})
-                  </div>
-                ) : (
-                  "Vui lòng thanh toán trước ngày 05 hàng tháng. Xin cảm ơn!"
-                )}
+                {data.receiptNote || "Vui lòng thanh toán đúng hạn trước ngày 05 hàng tháng. Xin cảm ơn!"}
               </td>
             </tr>
           </tbody>
         </table>
+
+        {/* VietQR Payment Section (Anti-Scan Collision Design) */}
+        {hasAccount && (
+          <div className="mt-3 pt-2.5 border-t-2 border-black">
+            {isSplit ? (
+              /* DUAL QR MODE: Step 1 (Room - Blue) & Step 2 (Utilities - Orange) */
+              <div className="space-y-2">
+                <div className="text-center">
+                  <div className="text-[11px] font-black uppercase tracking-wider text-slate-800">
+                    QUÉT MÃ VIETQR THANH TOÁN (TÁCH RIÊNG 2 KHOẢN)
+                  </div>
+                  <p className="text-[10px] text-slate-500 italic mt-0.5">
+                    ⚡ Vui lòng mở app ngân hàng quét lần lượt 2 mã tương ứng theo thứ tự bên dưới
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 items-stretch">
+                  {/* Card 1: Tiền phòng (Xanh dương / Indigo) */}
+                  <div className="border-2 border-blue-600 rounded-lg p-2 bg-[#f0f7ff] flex flex-col justify-between text-center relative overflow-hidden shadow-2xs">
+                    <div>
+                      <div className="bg-blue-600 text-white font-extrabold text-[11px] uppercase py-1 px-1 rounded-xs tracking-wide mb-1.5 flex items-center justify-center gap-1">
+                        <span>🏠 BƯỚC 1: TIỀN PHÒNG</span>
+                      </div>
+
+                      {roomQrUrl && (
+                        <div className="bg-white p-1 rounded-sm border border-blue-200 inline-block shadow-2xs mx-auto mb-1">
+                          <img
+                            src={roomQrUrl}
+                            alt="QR Tiền phòng"
+                            crossOrigin="anonymous"
+                            className="w-[108px] h-[108px] object-contain mx-auto block"
+                          />
+                        </div>
+                      )}
+
+                      <div className="text-sm font-black text-blue-800">
+                        {formatVND(roomAmount)} đ
+                      </div>
+                    </div>
+
+                    <div className="mt-1.5 pt-1.5 border-t border-blue-200 text-[10px] text-slate-700 space-y-0.5 text-left">
+                      <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.room.bank)}</strong></div>
+                      <div className="font-mono">STK: <strong>{paymentConfig.room.accountNumber}</strong></div>
+                      {paymentConfig.room.accountName && (
+                        <div className="truncate uppercase">Chủ TK: <strong>{paymentConfig.room.accountName}</strong></div>
+                      )}
+                      <div className="text-blue-900 font-semibold bg-blue-100/90 px-1 py-0.5 rounded-xs text-[9px] truncate">
+                        Cú pháp: P{data.roomCode} TIEN PHONG {cleanMonth}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Tiền điện nước & dịch vụ (Cam / Amber) */}
+                  <div className="border-2 border-amber-600 rounded-lg p-2 bg-[#fffaf5] flex flex-col justify-between text-center relative overflow-hidden shadow-2xs">
+                    <div>
+                      <div className="bg-amber-600 text-white font-extrabold text-[11px] uppercase py-1 px-1 rounded-xs tracking-wide mb-1.5 flex items-center justify-center gap-1">
+                        <span>⚡💧 BƯỚC 2: ĐIỆN & NƯỚC</span>
+                      </div>
+
+                      {serviceQrUrl && (
+                        <div className="bg-white p-1 rounded-sm border border-amber-200 inline-block shadow-2xs mx-auto mb-1">
+                          <img
+                            src={serviceQrUrl}
+                            alt="QR Tiền điện nước"
+                            crossOrigin="anonymous"
+                            className="w-[108px] h-[108px] object-contain mx-auto block"
+                          />
+                        </div>
+                      )}
+
+                      <div className="text-sm font-black text-amber-800">
+                        {formatVND(utilityAmount)} đ
+                      </div>
+                    </div>
+
+                    <div className="mt-1.5 pt-1.5 border-t border-amber-200 text-[10px] text-slate-700 space-y-0.5 text-left">
+                      <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.service.bank)}</strong></div>
+                      <div className="font-mono">STK: <strong>{paymentConfig.service.accountNumber}</strong></div>
+                      {paymentConfig.service.accountName && (
+                        <div className="truncate uppercase">Chủ TK: <strong>{paymentConfig.service.accountName}</strong></div>
+                      )}
+                      <div className="text-amber-900 font-semibold bg-amber-100/90 px-1 py-0.5 rounded-xs text-[9px] truncate">
+                        Cú pháp: P{data.roomCode} DIEN NUOC {cleanMonth}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* SINGLE QR MODE: 1 Unified Account for Total Amount */
+              <div className="max-w-[300px] mx-auto border-2 border-black rounded-lg p-2.5 bg-slate-50 text-center shadow-2xs">
+                <div className="bg-slate-900 text-white font-extrabold text-[11px] uppercase py-1 px-2 rounded-xs tracking-wide mb-1.5">
+                  QUÉT MÃ VIETQR THANH TOÁN
+                </div>
+
+                {singleQrUrl && (
+                  <div className="bg-white p-1 rounded-sm border border-slate-300 inline-block shadow-2xs mx-auto mb-1">
+                    <img
+                      src={singleQrUrl}
+                      alt="Mã VietQR thanh toán"
+                      crossOrigin="anonymous"
+                      className="w-[120px] h-[120px] object-contain mx-auto block"
+                    />
+                  </div>
+                )}
+
+                <div className="text-base font-black text-rose-700 mt-0.5">
+                  {formatVND(data.totalAmount)} đ
+                </div>
+
+                <div className="mt-1.5 pt-1.5 border-t border-slate-200 text-[10.5px] text-slate-700 space-y-0.5 text-left">
+                  <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.room.bank)}</strong></div>
+                  <div className="font-mono">STK: <strong>{paymentConfig.room.accountNumber}</strong></div>
+                  {paymentConfig.room.accountName && (
+                    <div className="truncate uppercase">Chủ TK: <strong>{paymentConfig.room.accountName}</strong></div>
+                  )}
+                  <div className="text-slate-900 font-semibold bg-slate-200/90 px-1.5 py-0.5 rounded-xs text-[9.5px] truncate">
+                    Cú pháp: P{data.roomCode} TT THANG {cleanMonth}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer Thank You Note */}
         <div className="mt-3 text-[11px] text-slate-600 space-y-0.5 text-center italic">

@@ -8,6 +8,12 @@ import { Input } from "@/components/ui/Input";
 import { getSettings, updateSettings } from "@/actions/settings";
 import { formatVND } from "@/lib/utils";
 import { DEFAULT_FURNITURE_CATALOG } from "@/lib/constants/furniture";
+import { VIETNAMESE_BANKS } from "@/lib/constants/banks";
+import {
+  parsePaymentAccounts,
+  serializePaymentAccounts,
+  type PaymentAccountsConfig,
+} from "@/lib/vietqr";
 import type { Setting } from "@/types";
 
 export function SettingsForm() {
@@ -16,6 +22,11 @@ export function SettingsForm() {
   const [enableService, setEnableService] = useState(false);
   const [servicePrice, setServicePrice] = useState("0");
   const [bankInfo, setBankInfo] = useState("MB Bank - 0987654321 - NGUYEN VAN A");
+  const [paymentConfig, setPaymentConfig] = useState<PaymentAccountsConfig>({
+    split: false,
+    room: { bank: "MB", accountNumber: "0987654321", accountName: "NGUYEN VAN A" },
+    service: { bank: "MB", accountNumber: "0987654321", accountName: "NGUYEN VAN A" },
+  });
   const [address, setAddress] = useState("325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ");
   const [serviceDescription, setServiceDescription] = useState("");
   const [receiptNote, setReceiptNote] = useState("");
@@ -40,7 +51,10 @@ export function SettingsForm() {
         setServicePrice(String(sPrice));
         setEnableService(sPrice > 0);
       }
-      setBankInfo(res.settings.bank_info || "");
+      if (res.settings.bank_info !== undefined) {
+        setBankInfo(res.settings.bank_info || "");
+        setPaymentConfig(parsePaymentAccounts(res.settings.bank_info));
+      }
       if (res.settings.address !== undefined) setAddress(res.settings.address || "");
       if (res.settings.service_description !== undefined) setServiceDescription(res.settings.service_description || "");
       if (res.settings.receipt_note !== undefined) setReceiptNote(res.settings.receipt_note || "");
@@ -89,11 +103,14 @@ export function SettingsForm() {
     const finalServicePrice = enableService ? (Number(servicePrice) || 0) : 0;
     const finalServiceDesc = enableService ? serviceDescription.trim() : "";
 
+    const serializedBank = serializePaymentAccounts(paymentConfig);
+    setBankInfo(serializedBank);
+
     const res = await updateSettings({
       electric_price: Number(electricPrice) || 0,
       water_price: Number(waterPrice) || 0,
       service_price: finalServicePrice,
-      bank_info: bankInfo,
+      bank_info: serializedBank,
       address,
       service_description: finalServiceDesc,
       receipt_note: receiptNote,
@@ -103,6 +120,7 @@ export function SettingsForm() {
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem("app_furniture_catalog", JSON.stringify(furnitureCatalog));
+        localStorage.setItem("app_payment_accounts", JSON.stringify(paymentConfig));
       } catch {}
     }
 
@@ -275,30 +293,258 @@ export function SettingsForm() {
         </div>
       </Card>
 
-      {/* Bank Account Info Card */}
-      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex items-center gap-1.5">
-          <CreditCard className="w-4 h-4 text-indigo-600" />
-          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Thông tin chuyển khoản ngân hàng
-          </h3>
+      {/* Bank Accounts & VietQR Card */}
+      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <CreditCard className="w-4 h-4 text-indigo-600" />
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Tài khoản ngân hàng & Mã VietQR
+            </h3>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+            VietQR Napas 247
+          </span>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Tên ngân hàng - Số tài khoản - Chủ tài khoản
+        {/* Toggle Split Accounts */}
+        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+          <div className="space-y-0.5 pr-2">
+            <div className="text-xs font-bold text-slate-800">
+              Tách riêng 2 tài khoản (Phòng & Điện nước)
+            </div>
+            <p className="text-[11px] text-slate-500 leading-tight">
+              Biên lai sẽ hiển thị 2 mã QR riêng biệt với số tiền và nội dung tương ứng, chống quét nhầm.
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={paymentConfig.split}
+              onChange={(e) =>
+                setPaymentConfig((prev) => ({
+                  ...prev,
+                  split: e.target.checked,
+                  service:
+                    e.target.checked && !prev.service.accountNumber
+                      ? { ...prev.room }
+                      : prev.service,
+                }))
+              }
+              className="sr-only peer"
+            />
+            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
           </label>
-          <textarea
-            rows={3}
-            value={bankInfo}
-            onChange={(e) => setBankInfo(e.target.value)}
-            placeholder="e.g. MB Bank - 0987654321 - NGUYEN VAN A"
-            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <p className="text-[11px] text-slate-500 mt-1">
-            Thông tin này sẽ hiển thị trên biểu mẫu tính tiền và hỗ trợ gửi kèm khách thuê.
-          </p>
         </div>
+
+        {paymentConfig.split ? (
+          /* DUAL ACCOUNT INPUTS */
+          <div className="space-y-3">
+            {/* Account 1: Room Rent (Blue Theme) */}
+            <div className="p-3 rounded-xl border-2 border-blue-200 bg-blue-50/40 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-blue-900">
+                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                <span>🏠 1. Tài khoản nhận TIỀN THUÊ PHÒNG</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Ngân hàng
+                  </label>
+                  <select
+                    value={paymentConfig.room.bank}
+                    onChange={(e) =>
+                      setPaymentConfig((prev) => ({
+                        ...prev,
+                        room: { ...prev.room, bank: e.target.value },
+                      }))
+                    }
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {VIETNAMESE_BANKS.map((b) => (
+                      <option key={b.code} value={b.code}>
+                        {b.shortName} - {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Số tài khoản nhận tiền phòng
+                  </label>
+                  <Input
+                    value={paymentConfig.room.accountNumber}
+                    onChange={(e) =>
+                      setPaymentConfig((prev) => ({
+                        ...prev,
+                        room: { ...prev.room, accountNumber: e.target.value },
+                      }))
+                    }
+                    placeholder="e.g. 0987654321"
+                    className="font-mono text-xs font-bold bg-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Tên chủ tài khoản (in hoa không dấu)
+                </label>
+                <Input
+                  value={paymentConfig.room.accountName}
+                  onChange={(e) =>
+                    setPaymentConfig((prev) => ({
+                      ...prev,
+                      room: { ...prev.room, accountName: e.target.value.toUpperCase() },
+                    }))
+                  }
+                  placeholder="e.g. NGUYEN VAN A"
+                  className="text-xs uppercase font-medium bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Account 2: Utilities (Orange Theme) */}
+            <div className="p-3 rounded-xl border-2 border-amber-200 bg-amber-50/40 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+                <span>⚡💧 2. Tài khoản nhận TIỀN ĐIỆN & NƯỚC</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Ngân hàng
+                  </label>
+                  <select
+                    value={paymentConfig.service.bank}
+                    onChange={(e) =>
+                      setPaymentConfig((prev) => ({
+                        ...prev,
+                        service: { ...prev.service, bank: e.target.value },
+                      }))
+                    }
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    {VIETNAMESE_BANKS.map((b) => (
+                      <option key={b.code} value={b.code}>
+                        {b.shortName} - {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Số tài khoản nhận điện nước
+                  </label>
+                  <Input
+                    value={paymentConfig.service.accountNumber}
+                    onChange={(e) =>
+                      setPaymentConfig((prev) => ({
+                        ...prev,
+                        service: { ...prev.service, accountNumber: e.target.value },
+                      }))
+                    }
+                    placeholder="e.g. 1234567890"
+                    className="font-mono text-xs font-bold bg-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Tên chủ tài khoản (in hoa không dấu)
+                </label>
+                <Input
+                  value={paymentConfig.service.accountName}
+                  onChange={(e) =>
+                    setPaymentConfig((prev) => ({
+                      ...prev,
+                      service: { ...prev.service, accountName: e.target.value.toUpperCase() },
+                    }))
+                  }
+                  placeholder="e.g. NGUYEN VAN A"
+                  className="text-xs uppercase font-medium bg-white"
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-amber-800 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
+              💡 <strong>Chống quét nhầm:</strong> Biên lai sẽ in Khung Xanh cho Tiền Phòng và Khung Cam cho Điện Nước, kèm số tiền chính xác được gắn sẵn vào từng mã QR.
+            </p>
+          </div>
+        ) : (
+          /* SINGLE UNIFIED ACCOUNT INPUTS */
+          <div className="space-y-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Ngân hàng
+                </label>
+                <select
+                  value={paymentConfig.room.bank}
+                  onChange={(e) =>
+                    setPaymentConfig((prev) => ({
+                      ...prev,
+                      room: { ...prev.room, bank: e.target.value },
+                      service: { ...prev.service, bank: e.target.value },
+                    }))
+                  }
+                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {VIETNAMESE_BANKS.map((b) => (
+                    <option key={b.code} value={b.code}>
+                      {b.shortName} - {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                  Số tài khoản nhận tiền
+                </label>
+                <Input
+                  value={paymentConfig.room.accountNumber}
+                  onChange={(e) =>
+                    setPaymentConfig((prev) => ({
+                      ...prev,
+                      room: { ...prev.room, accountNumber: e.target.value },
+                      service: { ...prev.service, accountNumber: e.target.value },
+                    }))
+                  }
+                  placeholder="e.g. 0987654321"
+                  className="font-mono text-xs font-bold bg-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Tên chủ tài khoản (in hoa không dấu)
+              </label>
+              <Input
+                value={paymentConfig.room.accountName}
+                onChange={(e) =>
+                  setPaymentConfig((prev) => ({
+                    ...prev,
+                    room: { ...prev.room, accountName: e.target.value.toUpperCase() },
+                    service: { ...prev.service, accountName: e.target.value.toUpperCase() },
+                  }))
+                }
+                placeholder="e.g. NGUYEN VAN A"
+                className="text-xs uppercase font-medium bg-white"
+              />
+            </div>
+
+            <p className="text-[11px] text-slate-500">
+              Mã VietQR tổng sẽ được tạo tự động trên biên lai với tổng tiền phòng và điện nước.
+            </p>
+          </div>
+        )}
       </Card>
     </div>
     {/* End of Left Column */}

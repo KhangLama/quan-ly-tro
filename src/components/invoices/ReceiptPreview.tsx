@@ -133,13 +133,30 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
             throw new Error("Không tìm thấy canvas biên lai để xuất ảnh");
           }
 
-          // Wait for fonts to be ready
+          // Wait for fonts and all images (including QR codes) to be loaded
           if (typeof document !== "undefined" && document.fonts?.ready) {
             try {
               await document.fonts.ready;
             } catch {
               // Ignore font loading errors if any
             }
+          }
+
+          const images = Array.from(node.querySelectorAll("img"));
+          if (images.length > 0) {
+            await Promise.all(
+              images.map(
+                (img) =>
+                  new Promise((resolve) => {
+                    if (img.complete) {
+                      resolve(null);
+                    } else {
+                      img.onload = () => resolve(null);
+                      img.onerror = () => resolve(null);
+                    }
+                  })
+              )
+            );
           }
 
           const targetWidth = 580;
@@ -188,6 +205,23 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
             } catch {
               // Ignore
             }
+          }
+
+          const images = Array.from(node.querySelectorAll("img"));
+          if (images.length > 0) {
+            await Promise.all(
+              images.map(
+                (img) =>
+                  new Promise((resolve) => {
+                    if (img.complete) {
+                      resolve(null);
+                    } else {
+                      img.onload = () => resolve(null);
+                      img.onerror = () => resolve(null);
+                    }
+                  })
+              )
+            );
           }
 
           const targetWidth = 580;

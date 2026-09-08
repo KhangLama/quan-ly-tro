@@ -87,12 +87,21 @@ export function InvoiceHistory({
       } catch {}
     }
 
+    let paymentConfig: any = undefined;
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("app_payment_accounts");
+        if (cached) paymentConfig = JSON.parse(cached);
+      } catch {}
+    }
+
     setSelectedReceipt({
       roomCode,
       month: inv.month,
       customerName,
       customerPhone,
       receiptNote: receiptNote || undefined,
+      paymentConfig,
       oldElectric: Number(inv.old_electric),
       newElectric: Number(inv.new_electric),
       electricPrice: Number(inv.electric_price),

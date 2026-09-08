@@ -35,6 +35,7 @@ import {
 import { ReceiptPreview, type ReceiptPreviewRef } from "./ReceiptPreview";
 import { type ReceiptData } from "./ReceiptCanvas";
 import { VietnameseMonthPicker } from "@/components/ui/VietnameseMonthPicker";
+import { parsePaymentAccounts } from "@/lib/vietqr";
 import type { Invoice } from "@/types";
 
 interface InvoiceCalculatorProps {
@@ -296,6 +297,19 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
   // Build live receipt data
   const selectedRoom = formData?.rooms.find((r) => r.id === roomId);
 
+  const paymentConfig = useMemo(() => {
+    if (formData?.settings?.bank_info) {
+      return parsePaymentAccounts(formData.settings.bank_info);
+    }
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("app_payment_accounts");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return undefined;
+  }, [formData?.settings?.bank_info]);
+
   const receiptData: ReceiptData | null = useMemo(() => {
     if (!selectedRoom) return null;
     return {
@@ -304,6 +318,7 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       customerName: formData?.leadTenant?.name || undefined,
       customerPhone: formData?.leadTenant?.phone || undefined,
       bankInfo: formData?.settings?.bank_info || undefined,
+      paymentConfig,
       address: formData?.settings?.address || undefined,
       serviceDescription:
         calculation.servicePrice > 0
@@ -331,6 +346,7 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
     selectedRoom,
     month,
     formData,
+    paymentConfig,
     oldElectric,
     newElectric,
     electricPrice,

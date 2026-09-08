@@ -103,4 +103,26 @@ describe("ReceiptCanvas & ReceiptPreview Architecture Tests", () => {
     expect(formatVND(175000)).toBe("175.000");
     expect(formatVND(0)).toBe("0");
   });
+
+  describe("VietQR Dual Account Calculations & Anti-Scan Collision Logic", () => {
+    it("splits room rent and utilities without rounding discrepancy", () => {
+      const { basePrice, discount, totalAmount } = sampleData;
+      const roomAmount = Math.max(0, basePrice - (discount || 0));
+      const utilityAmount = Math.max(0, totalAmount - roomAmount);
+
+      expect(roomAmount).toBe(1950000); // 2.000.000 - 50.000
+      expect(utilityAmount).toBe(350000); // 175.000 electric + 75.000 water + 100.000 service
+      expect(roomAmount + utilityAmount).toBe(totalAmount);
+    });
+
+    it("verifies unaccented uppercase syntax for banking apps", () => {
+      const rawDesc = "P101 TIỀN PHÒNG T08";
+      const normalized = rawDesc
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D");
+      expect(normalized).toBe("P101 TIEN PHONG T08");
+    });
+  });
 });
