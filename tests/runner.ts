@@ -3,6 +3,7 @@ import "./unit/calculation.test.ts";
 import "./unit/zalo-template.test.ts";
 import "./unit/auth-session.test.ts";
 import "./unit/components-m2.test.ts";
+import "./unit/receipt-preview.test.ts";
 import "./unit/mock-db-node.test.ts";
 import "./unit/empirical-m1-challenge.test.ts";
 import "./unit/empirical-m2-challenge.test.ts";

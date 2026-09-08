@@ -32,9 +32,9 @@ import {
   deleteInvoice,
   type InvoiceFormDataResult,
 } from "@/actions/invoices";
-import { ReceiptCanvas, type ReceiptData } from "./ReceiptCanvas";
+import { ReceiptPreview, type ReceiptPreviewRef } from "./ReceiptPreview";
+import { type ReceiptData } from "./ReceiptCanvas";
 import { VietnameseMonthPicker } from "@/components/ui/VietnameseMonthPicker";
-import { toPng, toBlob } from "html-to-image";
 import type { Invoice } from "@/types";
 
 interface InvoiceCalculatorProps {
@@ -43,7 +43,7 @@ interface InvoiceCalculatorProps {
 }
 
 export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalculatorProps) {
-  const receiptRef = useRef<HTMLDivElement>(null);
+  const receiptPreviewRef = useRef<ReceiptPreviewRef>(null);
   const [month, setMonth] = useState<string>(
     initialMonth || new Date().toISOString().substring(0, 7)
   );
@@ -344,16 +344,10 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
 
   // Handle Share: Share ONLY the image file
   const handleShareImage = async () => {
-    if (!receiptRef.current || !selectedRoom) return;
+    if (!receiptPreviewRef.current || !selectedRoom) return;
     try {
       setSharing(true);
-      const blob = await toBlob(receiptRef.current, {
-        quality: 0.98,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-      });
-      if (!blob) throw new Error("Could not generate receipt image blob");
-
+      const blob = await receiptPreviewRef.current.captureBlob();
       const file = new File(
         [blob],
         `Phieu_Tien_Phong_${selectedRoom.code}_${month}.png`,
@@ -385,14 +379,10 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
 
   // Handle Download Image
   const handleDownloadImage = async () => {
-    if (!receiptRef.current || !selectedRoom) return;
+    if (!receiptPreviewRef.current || !selectedRoom) return;
     try {
       setDownloading(true);
-      const dataUrl = await toPng(receiptRef.current, {
-        quality: 0.98,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-      });
+      const dataUrl = await receiptPreviewRef.current.capturePng();
       const link = document.createElement("a");
       link.download = `Phieu_Tien_Phong_${selectedRoom.code}_${month}.png`;
       link.href = dataUrl;
@@ -407,14 +397,10 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
 
   // Handle Copy Image
   const handleCopyImage = async () => {
-    if (!receiptRef.current) return;
+    if (!receiptPreviewRef.current) return;
     try {
       setDownloading(true);
-      const blob = await toBlob(receiptRef.current, {
-        quality: 0.98,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-      });
+      const blob = await receiptPreviewRef.current.captureBlob();
       if (blob && navigator.clipboard && (window as any).ClipboardItem) {
         await navigator.clipboard.write([
           new (window as any).ClipboardItem({ "image/png": blob }),
@@ -422,11 +408,11 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
         setCopiedImage(true);
         setTimeout(() => setCopiedImage(false), 2500);
       } else {
-        handleDownloadImage();
+        await handleDownloadImage();
       }
     } catch (err) {
       console.error("Failed to copy image", err);
-      handleDownloadImage();
+      await handleDownloadImage();
     } finally {
       setDownloading(false);
     }
@@ -779,16 +765,12 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
             </span>
           </div>
 
-          {/* Live Receipt Canvas */}
-          <div className="overflow-x-auto p-1 max-h-[65vh] overflow-y-auto rounded-2xl border border-slate-200/90 bg-slate-100 shadow-inner flex justify-center">
-            {receiptData ? (
-              <ReceiptCanvas ref={receiptRef} data={receiptData} />
-            ) : (
-              <div className="p-8 text-center text-xs text-slate-400">
-                Vui lòng chọn phòng để hiển thị biên lai
-              </div>
-            )}
-          </div>
+          {/* Live Receipt Preview with responsive scaling & pristine export */}
+          <ReceiptPreview
+            ref={receiptPreviewRef}
+            data={receiptData}
+            maxHeight="65vh"
+          />
 
           {/* Action Buttons Panel */}
           <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80 shadow-xs">

@@ -1,5 +1,5 @@
 import React, { forwardRef } from "react";
-import { formatVND } from "@/lib/utils";
+import { formatVND, cn } from "@/lib/utils";
 
 export interface ReceiptData {
   roomCode: string;
@@ -30,10 +30,13 @@ export interface ReceiptData {
 
 interface ReceiptCanvasProps {
   data: ReceiptData;
+  className?: string;
+  style?: React.CSSProperties;
+  id?: string;
 }
 
 export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
-  ({ data }, ref) => {
+  ({ data, className, style, id = "receipt-canvas" }, ref) => {
     const formatDate = (monthStr: string) => {
       const today = new Date();
       const dd = String(today.getDate()).padStart(2, "0");
@@ -50,9 +53,12 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
     return (
       <div
         ref={ref}
-        id="receipt-canvas"
-        className="bg-white text-slate-900 mx-auto p-4 sm:p-5 w-[580px] text-[13px] leading-snug font-sans select-none rounded-lg shadow-sm"
-        style={{ minWidth: "580px" }}
+        id={id}
+        className={cn(
+          "bg-white text-slate-900 mx-auto p-4 sm:p-5 w-[580px] text-[13px] leading-snug font-sans select-none rounded-lg shadow-sm",
+          className
+        )}
+        style={{ minWidth: "580px", ...style }}
       >
         {/* Header Banner */}
         <div className="bg-[#F8D7DA] text-slate-900 font-extrabold text-center text-lg uppercase py-2 tracking-wide border-2 border-black">

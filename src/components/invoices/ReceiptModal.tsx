@@ -4,8 +4,8 @@ import React, { useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Download, Check, Share2, Sparkles, Image as ImageIcon } from "lucide-react";
-import { toPng, toBlob } from "html-to-image";
-import { ReceiptCanvas, type ReceiptData } from "./ReceiptCanvas";
+import { ReceiptPreview, type ReceiptPreviewRef } from "./ReceiptPreview";
+import { type ReceiptData } from "./ReceiptCanvas";
 
 export type { ReceiptData };
 
@@ -16,7 +16,7 @@ interface ReceiptModalProps {
 }
 
 export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
-  const receiptRef = useRef<HTMLDivElement>(null);
+  const receiptPreviewRef = useRef<ReceiptPreviewRef>(null);
   const [downloading, setDownloading] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [copiedImage, setCopiedImage] = useState(false);
@@ -24,14 +24,10 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
   if (!data) return null;
 
   const handleDownloadImage = async () => {
-    if (!receiptRef.current) return;
+    if (!receiptPreviewRef.current) return;
     try {
       setDownloading(true);
-      const dataUrl = await toPng(receiptRef.current, {
-        quality: 0.98,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-      });
+      const dataUrl = await receiptPreviewRef.current.capturePng();
       const link = document.createElement("a");
       link.download = `Phieu_Tien_Phong_${data.roomCode}_${data.month}.png`;
       link.href = dataUrl;
@@ -45,14 +41,10 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
   };
 
   const handleCopyImage = async () => {
-    if (!receiptRef.current) return;
+    if (!receiptPreviewRef.current) return;
     try {
       setDownloading(true);
-      const blob = await toBlob(receiptRef.current, {
-        quality: 0.98,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-      });
+      const blob = await receiptPreviewRef.current.captureBlob();
       if (blob && navigator.clipboard && (window as any).ClipboardItem) {
         await navigator.clipboard.write([
           new (window as any).ClipboardItem({ "image/png": blob }),
@@ -60,27 +52,21 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
         setCopiedImage(true);
         setTimeout(() => setCopiedImage(false), 2500);
       } else {
-        handleDownloadImage();
+        await handleDownloadImage();
       }
     } catch (err) {
       console.error("Failed to copy image", err);
-      handleDownloadImage();
+      await handleDownloadImage();
     } finally {
       setDownloading(false);
     }
   };
 
   const handleShare = async () => {
-    if (!receiptRef.current) return;
+    if (!receiptPreviewRef.current) return;
     try {
       setSharing(true);
-      const blob = await toBlob(receiptRef.current, {
-        quality: 0.98,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-      });
-      if (!blob) throw new Error("Could not generate image blob");
-
+      const blob = await receiptPreviewRef.current.captureBlob();
       const file = new File(
         [blob],
         `Phieu_Tien_Phong_${data.roomCode}_${data.month}.png`,
@@ -183,10 +169,8 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
           )}
         </div>
 
-        {/* Scrollable Container for Receipt */}
-        <div className="overflow-x-auto p-2 max-h-[68vh] overflow-y-auto rounded-2xl border border-slate-200/90 bg-slate-100/90 shadow-inner flex justify-center">
-          <ReceiptCanvas ref={receiptRef} data={data} />
-        </div>
+        {/* Responsive Receipt Preview */}
+        <ReceiptPreview ref={receiptPreviewRef} data={data} maxHeight="62vh" />
 
         {/* Modal Footer */}
         <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
