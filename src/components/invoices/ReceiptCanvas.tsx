@@ -282,86 +282,113 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
         {hasAccount && (
           <div className="mt-3 pt-2.5 border-t-2 border-black">
             {isSplit ? (
-              /* DUAL QR MODE: Step 1 (Room - Blue) & Step 2 (Utilities - Orange) */
-              <div className="space-y-2">
+              /* DUAL QR MODE: Vertical Stacking with Safe Physical Clearance (Anti-Collision) */
+              <div className="space-y-3">
                 <div className="text-center">
                   <div className="text-[11px] font-black uppercase tracking-wider text-slate-800">
                     QUÉT MÃ VIETQR THANH TOÁN (TÁCH RIÊNG 2 KHOẢN)
                   </div>
                   <p className="text-[10px] text-slate-500 italic mt-0.5">
-                    ⚡ Vui lòng mở app ngân hàng quét lần lượt 2 mã tương ứng theo thứ tự bên dưới
+                    Vui lòng quét Bước 1 trước, sau đó kéo máy xuống để quét Bước 2
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 items-stretch">
-                  {/* Card 1: Tiền phòng (Xanh dương / Indigo) */}
-                  <div className="border-2 border-blue-600 rounded-lg p-2 bg-[#f0f7ff] flex flex-col justify-between text-center relative overflow-hidden shadow-2xs">
-                    <div>
-                      <div className="bg-blue-600 text-white font-extrabold text-[11px] uppercase py-1 px-1 rounded-xs tracking-wide mb-1.5 flex items-center justify-center gap-1">
-                        <span>🏠 BƯỚC 1: TIỀN PHÒNG</span>
-                      </div>
+                {/* Card 1: Tiền phòng (Top Card - Xanh Dương) */}
+                <div className="border-2 border-blue-600 rounded-xl p-2.5 bg-[#f0f7ff] shadow-xs">
+                  <div className="bg-blue-600 text-white font-extrabold text-[11px] uppercase py-1 px-2.5 rounded-md tracking-wider flex items-center justify-between mb-2">
+                    <span className="flex items-center gap-1.5">
+                      <span>🏠 BƯỚC 1: THANH TOÁN TIỀN THUÊ PHÒNG</span>
+                    </span>
+                    <span className="text-[10px] font-normal opacity-90">Quét mã này trước</span>
+                  </div>
 
-                      {roomQrUrl && (
-                        <div className="bg-white p-1 rounded-sm border border-blue-200 inline-block shadow-2xs mx-auto mb-1">
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Left: Detailed text info */}
+                    <div className="flex-1 min-w-0 space-y-1 text-left">
+                      <div className="text-xs text-slate-500 font-semibold">Số tiền cần chuyển:</div>
+                      <div className="text-lg font-black text-blue-700 leading-none">
+                        {formatVND(roomAmount)} đ
+                      </div>
+                      <div className="text-[11px] text-slate-800 space-y-0.5 pt-1">
+                        <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.room.bank)}</strong></div>
+                        <div className="font-mono">STK: <strong className="text-blue-900 bg-blue-100/80 px-1 py-0.5 rounded-sm">{paymentConfig.room.accountNumber}</strong></div>
+                        {paymentConfig.room.accountName && (
+                          <div className="truncate uppercase text-slate-700">Chủ TK: <strong>{paymentConfig.room.accountName}</strong></div>
+                        )}
+                        <div className="text-blue-900 font-semibold bg-blue-100/90 px-1.5 py-0.5 rounded-sm text-[10px] inline-block mt-0.5">
+                          Cú pháp: P{data.roomCode} TIEN PHONG {cleanMonth}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: VietQR Code */}
+                    {roomQrUrl && (
+                      <div className="shrink-0 text-center">
+                        <div className="bg-white p-1.5 rounded-lg border-2 border-blue-200 inline-block shadow-xs">
                           <img
                             src={roomQrUrl}
                             alt="QR Tiền phòng"
                             crossOrigin="anonymous"
-                            className="w-[108px] h-[108px] object-contain mx-auto block"
+                            className="w-[112px] h-[112px] object-contain block"
                           />
                         </div>
-                      )}
-
-                      <div className="text-sm font-black text-blue-800">
-                        {formatVND(roomAmount)} đ
+                        <div className="text-[9.5px] font-bold text-blue-700 mt-0.5">Mã QR Tiền Phòng</div>
                       </div>
-                    </div>
+                    )}
+                  </div>
+                </div>
 
-                    <div className="mt-1.5 pt-1.5 border-t border-blue-200 text-[10px] text-slate-700 space-y-0.5 text-left">
-                      <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.room.bank)}</strong></div>
-                      <div className="font-mono">STK: <strong>{paymentConfig.room.accountNumber}</strong></div>
-                      {paymentConfig.room.accountName && (
-                        <div className="truncate uppercase">Chủ TK: <strong>{paymentConfig.room.accountName}</strong></div>
-                      )}
-                      <div className="text-blue-900 font-semibold bg-blue-100/90 px-1 py-0.5 rounded-xs text-[9px] truncate">
-                        Cú pháp: P{data.roomCode} TIEN PHONG {cleanMonth}
-                      </div>
-                    </div>
+                {/* Safety Buffer & Transition Divider */}
+                <div className="relative flex items-center justify-center my-1">
+                  <div className="border-t-2 border-dashed border-slate-300 w-full"></div>
+                  <div className="absolute bg-white px-3 py-0.5 rounded-full border border-slate-300 text-[9.5px] font-bold text-slate-500 flex items-center gap-1 shadow-2xs">
+                    <span>✂️ Kéo máy xuống quét tiền điện nước</span>
+                    <span>⬇️</span>
+                  </div>
+                </div>
+
+                {/* Card 2: Tiền điện nước (Bottom Card - Cam Hổ Phách) */}
+                <div className="border-2 border-amber-600 rounded-xl p-2.5 bg-[#fffaf5] shadow-xs">
+                  <div className="bg-amber-600 text-white font-extrabold text-[11px] uppercase py-1 px-2.5 rounded-md tracking-wider flex items-center justify-between mb-2">
+                    <span className="flex items-center gap-1.5">
+                      <span>⚡💧 BƯỚC 2: THANH TOÁN TIỀN ĐIỆN & NƯỚC</span>
+                    </span>
+                    <span className="text-[10px] font-normal opacity-90">Quét mã này sau</span>
                   </div>
 
-                  {/* Card 2: Tiền điện nước & dịch vụ (Cam / Amber) */}
-                  <div className="border-2 border-amber-600 rounded-lg p-2 bg-[#fffaf5] flex flex-col justify-between text-center relative overflow-hidden shadow-2xs">
-                    <div>
-                      <div className="bg-amber-600 text-white font-extrabold text-[11px] uppercase py-1 px-1 rounded-xs tracking-wide mb-1.5 flex items-center justify-center gap-1">
-                        <span>⚡💧 BƯỚC 2: ĐIỆN & NƯỚC</span>
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Left: Detailed text info */}
+                    <div className="flex-1 min-w-0 space-y-1 text-left">
+                      <div className="text-xs text-slate-500 font-semibold">Số tiền cần chuyển:</div>
+                      <div className="text-lg font-black text-amber-700 leading-none">
+                        {formatVND(utilityAmount)} đ
                       </div>
+                      <div className="text-[11px] text-slate-800 space-y-0.5 pt-1">
+                        <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.service.bank)}</strong></div>
+                        <div className="font-mono">STK: <strong className="text-amber-900 bg-amber-100/80 px-1 py-0.5 rounded-sm">{paymentConfig.service.accountNumber}</strong></div>
+                        {paymentConfig.service.accountName && (
+                          <div className="truncate uppercase text-slate-700">Chủ TK: <strong>{paymentConfig.service.accountName}</strong></div>
+                        )}
+                        <div className="text-amber-900 font-semibold bg-amber-100/90 px-1.5 py-0.5 rounded-sm text-[10px] inline-block mt-0.5">
+                          Cú pháp: P{data.roomCode} DIEN NUOC {cleanMonth}
+                        </div>
+                      </div>
+                    </div>
 
-                      {serviceQrUrl && (
-                        <div className="bg-white p-1 rounded-sm border border-amber-200 inline-block shadow-2xs mx-auto mb-1">
+                    {/* Right: VietQR Code */}
+                    {serviceQrUrl && (
+                      <div className="shrink-0 text-center">
+                        <div className="bg-white p-1.5 rounded-lg border-2 border-amber-200 inline-block shadow-xs">
                           <img
                             src={serviceQrUrl}
                             alt="QR Tiền điện nước"
                             crossOrigin="anonymous"
-                            className="w-[108px] h-[108px] object-contain mx-auto block"
+                            className="w-[112px] h-[112px] object-contain block"
                           />
                         </div>
-                      )}
-
-                      <div className="text-sm font-black text-amber-800">
-                        {formatVND(utilityAmount)} đ
+                        <div className="text-[9.5px] font-bold text-amber-700 mt-0.5">Mã QR Điện Nước</div>
                       </div>
-                    </div>
-
-                    <div className="mt-1.5 pt-1.5 border-t border-amber-200 text-[10px] text-slate-700 space-y-0.5 text-left">
-                      <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.service.bank)}</strong></div>
-                      <div className="font-mono">STK: <strong>{paymentConfig.service.accountNumber}</strong></div>
-                      {paymentConfig.service.accountName && (
-                        <div className="truncate uppercase">Chủ TK: <strong>{paymentConfig.service.accountName}</strong></div>
-                      )}
-                      <div className="text-amber-900 font-semibold bg-amber-100/90 px-1 py-0.5 rounded-xs text-[9px] truncate">
-                        Cú pháp: P{data.roomCode} DIEN NUOC {cleanMonth}
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
