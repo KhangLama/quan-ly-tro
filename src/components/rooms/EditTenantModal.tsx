@@ -25,6 +25,8 @@ export function EditTenantModal({
   const [phone, setPhone] = useState("");
   const [cccd, setCccd] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [status, setStatus] = useState<"active" | "moved_out">("active");
   const [depositAmount, setDepositAmount] = useState("");
   const [isLead, setIsLead] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,6 +38,8 @@ export function EditTenantModal({
       setPhone(tenant.phone || "");
       setCccd(tenant.cccd || "");
       setStartDate(tenant.start_date ? tenant.start_date.split("T")[0] : "");
+      setEndDate(tenant.end_date ? tenant.end_date.split("T")[0] : "");
+      setStatus(tenant.status || "active");
       setDepositAmount(tenant.deposit_amount ? String(tenant.deposit_amount) : "");
       setIsLead(Boolean(tenant.is_lead));
       setError(null);
@@ -54,13 +58,16 @@ export function EditTenantModal({
     setLoading(true);
     setError(null);
 
+    const isMovedOut = status === "moved_out";
     const res = await updateTenant(tenant.id, {
       name: name.trim(),
       phone: phone.trim() || null,
       cccd: cccd.trim() || null,
       start_date: startDate || tenant.start_date,
+      end_date: isMovedOut ? (endDate || new Date().toISOString().split("T")[0]) : null,
       deposit_amount: depositAmount ? Number(depositAmount) : 0,
-      is_lead: isLead,
+      is_lead: isMovedOut ? false : isLead,
+      status: status,
     });
 
     setLoading(false);
@@ -156,24 +163,63 @@ export function EditTenantModal({
           </div>
         </div>
 
-        <div className="pt-1">
-          <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
-            <input
-              type="checkbox"
-              checked={isLead}
-              onChange={(e) => setIsLead(e.target.checked)}
-              className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+        {/* If tenant moved out, allow editing end_date */}
+        {status === "moved_out" && (
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Ngày rời / chuyển đi
+            </label>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
             />
-            <div>
-              <span className="text-xs font-bold text-slate-800">
-                Người đại diện phòng (Đứng tên hợp đồng)
-              </span>
-              <p className="text-[11px] text-slate-500">
-                Nhận tin nhắn hóa đơn và liên hệ chính
-              </p>
-            </div>
-          </label>
-        </div>
+          </div>
+        )}
+
+        {/* If tenant is moved_out, option to restore to active */}
+        {tenant.status === "moved_out" && (
+          <div className="pt-1">
+            <label className="flex items-center gap-2.5 p-3 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-50 cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                checked={status === "active"}
+                onChange={(e) => setStatus(e.target.checked ? "active" : "moved_out")}
+                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+              />
+              <div>
+                <span className="text-xs font-bold text-slate-800">
+                  Khôi phục khách thuê về trạng thái &quot;Đang ở&quot;
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  Đánh dấu khách này vẫn đang thuê phòng (dành cho trường hợp bấm nhầm trả phòng)
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
+
+        {/* Lead Tenant Option (only for active tenants) */}
+        {status === "active" && (
+          <div className="pt-1">
+            <label className="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                checked={isLead}
+                onChange={(e) => setIsLead(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+              />
+              <div>
+                <span className="text-xs font-bold text-slate-800">
+                  Người đại diện phòng (Đứng tên hợp đồng)
+                </span>
+                <p className="text-[11px] text-slate-500">
+                  Nhận tin nhắn hóa đơn và liên hệ chính
+                </p>
+              </div>
+            </label>
+          </div>
+        )}
 
         <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>

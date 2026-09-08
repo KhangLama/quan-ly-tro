@@ -305,7 +305,7 @@ export default function RoomDetailPage() {
           </div>
 
           {/* Moved Out Tenant History */}
-          <TenantHistory tenants={movedOutTenants} />
+          <TenantHistory tenants={movedOutTenants} onRefresh={fetchDetails} />
         </div>
 
         {/* Right Column: Invoices History */}

@@ -140,27 +140,62 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
       });
 
       // 3. Evaluate whether room was occupied in this specific month
+      const currentActiveTenants = allTenants.filter(
+        (t) => t.room_id === room.id && t.status === "active"
+      );
+
       let isRoomOccupied = false;
       if (invoice !== null) {
         // An invoice in this month confirms the room was occupied/billed
         isRoomOccupied = true;
+      } else if (isCurrentOrFuture) {
+        isRoomOccupied = currentActiveTenants.length > 0 || room.status === "rented";
       } else if (monthTenants.length > 0) {
-        isRoomOccupied = true;
-      } else if (isCurrentOrFuture && room.status === "rented") {
         isRoomOccupied = true;
       } else {
         isRoomOccupied = false;
       }
 
-      // 4. Identify lead tenant for this specific month
-      const lead =
-        monthTenants.find((t) => t.is_lead) ||
-        monthTenants[0] ||
-        (isRoomOccupied
-          ? allTenants.filter((t) => t.room_id === room.id).find((t) => t.is_lead) ||
-            allTenants.filter((t) => t.room_id === room.id)[0] ||
-            null
-          : null);
+      // 4. Identify lead tenant and active roommates count for this specific month
+      let lead: Tenant | null = null;
+      let tenantsCount = 0;
+
+      if (isCurrentOrFuture) {
+        // For current/future months, ONLY currently active tenants count as roommates!
+        // Tenants who moved out in the past must NEVER be counted as +1 roommates.
+        lead =
+          currentActiveTenants.find((t) => t.is_lead) ||
+          currentActiveTenants[0] ||
+          (isRoomOccupied
+            ? allTenants.filter((t) => t.room_id === room.id).find((t) => t.is_lead) ||
+              allTenants.filter((t) => t.room_id === room.id)[0] ||
+              null
+            : null);
+        tenantsCount = isRoomOccupied
+          ? Math.max(currentActiveTenants.length, lead ? 1 : 0)
+          : 0;
+      } else {
+        // For past months, look at tenants residing in that month
+        lead =
+          monthTenants.find((t) => t.is_lead) ||
+          monthTenants[0] ||
+          (isRoomOccupied
+            ? allTenants.filter((t) => t.room_id === room.id).find((t) => t.is_lead) ||
+              allTenants.filter((t) => t.room_id === room.id)[0] ||
+              null
+            : null);
+
+        // Filter tenants who were active concurrently at month end
+        const activeAtEndOfMonth = monthTenants.filter((t) => {
+          if (t.status === "active") return true;
+          const tEnd = t.end_date ? t.end_date.substring(0, 10) : null;
+          return !tEnd || tEnd >= monthEndDate;
+        });
+
+        tenantsCount = isRoomOccupied
+          ? Math.max(activeAtEndOfMonth.length > 0 ? activeAtEndOfMonth.length : 1, lead ? 1 : 0)
+          : 0;
+      }
 
       let billingStatus: "paid" | "pending" | "empty" = "empty";
       let billingBadgeLabel: "Đã thu" | "Chưa thu" | "Trống" = "Trống";
@@ -181,8 +216,6 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
         billingStatus = "pending";
         billingBadgeLabel = "Chưa thu";
       }
-
-      const tenantsCount = isRoomOccupied ? Math.max(monthTenants.length, lead ? 1 : 0) : 0;
 
       return {
         id: room.id,

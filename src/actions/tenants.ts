@@ -230,6 +230,27 @@ export async function updateTenant(
       return { success: false, error: error.message };
     }
 
+    // Sync room status if tenant status was explicitly modified
+    if (data.status === "active") {
+      await supabase
+        .from("rooms")
+        .update({ status: "rented" })
+        .eq("id", currentTenant.room_id);
+    } else if (data.status === "moved_out") {
+      const { data: remaining } = await supabase
+        .from("tenants")
+        .select("id")
+        .eq("room_id", currentTenant.room_id)
+        .eq("status", "active");
+
+      if (!remaining || remaining.length === 0) {
+        await supabase
+          .from("rooms")
+          .update({ status: "empty" })
+          .eq("id", currentTenant.room_id);
+      }
+    }
+
     safeRevalidatePath("/");
     safeRevalidatePath("/rooms");
     safeRevalidatePath(`/rooms/${currentTenant.room_id}`);

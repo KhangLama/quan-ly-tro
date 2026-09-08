@@ -256,5 +256,35 @@ describe("Milestone 3 Empirical Gate Verification Suite", () => {
       expect(cardJulyR2?.billingBadgeLabel).toBe("Trống");
       expect(cardJulyR2?.leadTenantName).toBeNull();
     });
+
+    it("does NOT count moved-out tenants as active roommates (+1 badge) on dashboard", async () => {
+      mockDbStore.reset();
+      const r = (await createRoom({ code: "P9", base_price: 2200000 })).room!;
+
+      // Active tenant
+      await addTenant({
+        room_id: r.id,
+        name: "Nguyen Hoang Tu",
+        is_lead: true,
+      });
+
+      // Old tenant who moved out
+      const pastTenant = (
+        await addTenant({
+          room_id: r.id,
+          name: "Cu Dan Cu",
+          is_lead: false,
+        })
+      ).tenant!;
+      await markTenantMovedOut(pastTenant.id, "2026-09-02");
+
+      const todayMonth = new Date().toISOString().substring(0, 7);
+      const dash = await getDashboardData(todayMonth);
+      const card = dash.rooms.find((c) => c.id === r.id);
+
+      expect(card).toBeDefined();
+      expect(card?.leadTenantName).toBe("Nguyen Hoang Tu");
+      expect(card?.activeTenantsCount).toBe(1); // EXACTLY 1, NOT 2!
+    });
   });
 });
