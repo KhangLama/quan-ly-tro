@@ -58,23 +58,33 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50 via-slate-50 to-slate-100 flex flex-col justify-center items-center px-4 py-8">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50/40 via-slate-50 to-slate-100 flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden">
+      {/* Ambient background glow orbs */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-40 -left-40 w-96 h-96 bg-indigo-200/30 rounded-full blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-40 -right-40 w-96 h-96 bg-violet-200/30 rounded-full blur-3xl"
+      />
+
+      <div className="w-full max-w-sm relative z-10">
         {/* App Logo & Header */}
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-sky-600 flex items-center justify-center text-white shadow-lg shadow-sky-600/30 mb-3 animate-in zoom-in-95 duration-200">
+          <div className="mx-auto w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-violet-600 flex items-center justify-center text-white shadow-xl shadow-indigo-600/30 mb-3 animate-in zoom-in-95 duration-300">
             <Building2 className="w-8 h-8" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">
             Nhà trọ Trúc Lam
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Đăng nhập tài khoản quản trị
+          <p className="text-xs text-slate-500 mt-1 font-medium">
+            Đăng nhập tài khoản quản trị hệ thống
           </p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-3xl p-6 shadow-xl shadow-slate-200/50 border border-slate-200/80">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 sm:p-7 shadow-2xl shadow-slate-900/10 border border-slate-200/80">
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Error Banner */}
             {error && (
@@ -91,7 +101,7 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <label
                 htmlFor="password"
-                className="block text-xs font-semibold text-slate-700 uppercase tracking-wider"
+                className="block text-xs font-bold text-slate-700 uppercase tracking-wider"
               >
                 Mật khẩu quản trị
               </label>
@@ -113,14 +123,14 @@ export default function LoginPage() {
                   autoFocus
                   required
                   disabled={isLoading}
-                  className="block w-full rounded-xl border border-slate-300 bg-white pl-10 pr-11 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 disabled:bg-slate-100 transition-colors"
+                  className="block w-full rounded-xl border border-slate-300 bg-white pl-10 pr-11 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 disabled:bg-slate-100 transition-all duration-200"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   tabIndex={-1}
                   aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-hidden cursor-pointer"
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />

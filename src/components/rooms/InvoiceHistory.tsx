@@ -124,7 +124,7 @@ export function InvoiceHistory({
           }
 
           return (
-            <Card key={inv.id} className="p-3.5 bg-white border-slate-200/80 shadow-xs text-xs">
+            <Card key={inv.id} className="p-3.5 bg-white/95 backdrop-blur-xs border-slate-200/80 shadow-xs hover:-translate-y-0.5 hover:shadow-float hover:border-indigo-200/80 transition-all duration-300 text-xs">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <FileText className="w-4 h-4 text-indigo-600 shrink-0" />

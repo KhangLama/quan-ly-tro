@@ -60,7 +60,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-slate-950/60 backdrop-blur-md transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -70,10 +70,13 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "relative z-50 w-full bg-white shadow-2xl rounded-t-3xl sm:rounded-2xl border border-slate-200/80 p-5 sm:p-6 overflow-hidden max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200",
+          "relative z-50 w-full bg-white shadow-2xl rounded-t-3xl sm:rounded-3xl border border-slate-200/80 p-5 sm:p-6 overflow-hidden max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200",
           sizeStyles[size]
         )}
       >
+        {/* Mobile Drag Indicator Bar */}
+        <div className="w-12 h-1 bg-slate-300 rounded-full mx-auto -mt-1 mb-3 sm:hidden shrink-0" />
+
         {/* Header */}
         <div className="flex items-start justify-between pb-3 border-b border-slate-100">
           <div className="space-y-1">

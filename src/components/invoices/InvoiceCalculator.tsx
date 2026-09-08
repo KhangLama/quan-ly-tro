@@ -441,7 +441,7 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
   }
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-10">
+    <div className="space-y-4 max-w-7xl mx-auto pb-28 lg:pb-12">
       {/* Notifications */}
       {errorMsg && (
         <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
@@ -558,14 +558,21 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       </Card>
 
       {/* Card 2: Electricity Meters */}
-      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 text-amber-500" />
-            <span>Chỉ số Điện (kWh)</span>
-          </h2>
-          <span className="text-[11px] font-medium text-slate-400">
-            Đơn giá: {formatVND(electricPrice)}đ/kWh
+      <Card className="p-4 bg-white/95 backdrop-blur-xs border-slate-200/80 shadow-xs space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span>Chỉ số Điện (kWh)</span>
+            </h2>
+            {calculation.electricUsage > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200 shadow-2xs">
+                +{calculation.electricUsage} số
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] font-bold text-slate-500">
+            {formatVND(electricPrice)}đ/kWh
           </span>
         </div>
 
@@ -583,7 +590,7 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-amber-700 mb-1">
+            <label className="block text-[11px] font-bold text-amber-800 mb-1">
               Số mới (hiện tại)
             </label>
             <Input
@@ -603,14 +610,21 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       </Card>
 
       {/* Card 3: Water Meters */}
-      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Droplet className="w-3.5 h-3.5 text-sky-500" />
-            <span>Chỉ số Nước (m³)</span>
-          </h2>
-          <span className="text-[11px] font-medium text-slate-400">
-            Đơn giá: {formatVND(waterPrice)}đ/m³
+      <Card className="p-4 bg-white/95 backdrop-blur-xs border-slate-200/80 shadow-xs space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Droplet className="w-3.5 h-3.5 text-sky-500" />
+              <span>Chỉ số Nước (m³)</span>
+            </h2>
+            {calculation.waterUsage > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-sky-100 text-sky-800 border border-sky-200 shadow-2xs">
+                +{calculation.waterUsage} m³
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] font-bold text-slate-500">
+            {formatVND(waterPrice)}đ/m³
           </span>
         </div>
 
@@ -853,6 +867,40 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
         {/* End of Right Column */}
       </div>
       {/* End of 2-Column Grid */}
+
+      {/* Mobile Sticky Floating Action Dock */}
+      <div className="md:hidden fixed bottom-16 inset-x-0 z-30 px-3 py-2 bg-white/90 backdrop-blur-xl border-t border-slate-200/80 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <span className="text-[10px] uppercase font-bold text-slate-400 block leading-tight">
+            Tổng tiền {month}
+          </span>
+          <span className="text-base font-black text-indigo-600 truncate block">
+            {formatVND(calculation.totalAmount)}đ
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => handleSave("pending")}
+            isLoading={saving}
+            className="text-xs h-9 font-bold px-3 shadow-xs"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>{savedInvoice ? "Cập nhật" : "Lưu"}</span>
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleShareImage}
+            isLoading={sharing}
+            className="bg-[#0068FF] hover:bg-[#0055d4] text-white text-xs h-9 font-bold px-3 shadow-xs"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Chia sẻ</span>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

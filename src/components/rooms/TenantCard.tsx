@@ -33,24 +33,51 @@ export function TenantCard({ tenant, onRefresh }: TenantCardProps) {
     }
   };
 
+  const [copiedCCCD, setCopiedCCCD] = useState(false);
+
+  const handleCopyCCCD = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!tenant.cccd) return;
+    navigator.clipboard.writeText(tenant.cccd);
+    setCopiedCCCD(true);
+    setTimeout(() => setCopiedCCCD(false), 2000);
+  };
+
   return (
     <>
-      <Card className="p-4 bg-white border-slate-200/80 shadow-xs">
-        <div className="flex items-start justify-between gap-2">
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-base font-bold text-slate-900">{tenant.name}</span>
-              {tenant.is_lead && (
-                <Badge variant="info" size="sm">
-                  Đại diện
-                </Badge>
+      <Card className="p-4 bg-white/95 backdrop-blur-xs border-slate-200/80 shadow-xs hover:-translate-y-0.5 hover:shadow-float hover:border-indigo-200/80 transition-all duration-300">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            {/* Avatar Pill with Initial */}
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center font-bold text-sm shadow-sm shadow-indigo-500/20 shrink-0">
+              {tenant.name.charAt(0).toUpperCase()}
+            </div>
+
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-base font-black text-slate-900 tracking-tight">{tenant.name}</span>
+                {tenant.is_lead && (
+                  <Badge variant="info" size="sm">
+                    Người đại diện
+                  </Badge>
+                )}
+              </div>
+              {tenant.cccd && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-500 font-mono">
+                    CCCD: {tenant.cccd}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyCCCD}
+                    title="Sao chép CCCD"
+                    className="text-[10px] text-indigo-600 hover:underline font-semibold cursor-pointer"
+                  >
+                    {copiedCCCD ? "Đã chép!" : "Chép"}
+                  </button>
+                </div>
               )}
             </div>
-            {tenant.cccd && (
-              <p className="text-xs text-slate-500 font-mono">
-                CCCD: {tenant.cccd}
-              </p>
-            )}
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -58,7 +85,7 @@ export function TenantCard({ tenant, onRefresh }: TenantCardProps) {
               variant="outline"
               size="sm"
               onClick={() => setShowEditModal(true)}
-              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 text-xs px-2.5 py-1.5 h-auto whitespace-nowrap shrink-0 gap-1"
+              className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 text-xs px-2.5 py-1.5 h-auto whitespace-nowrap shrink-0 gap-1 font-bold"
             >
               <Edit2 className="w-3.5 h-3.5 shrink-0" />
               <span>Sửa</span>
@@ -67,7 +94,7 @@ export function TenantCard({ tenant, onRefresh }: TenantCardProps) {
               variant="outline"
               size="sm"
               onClick={() => setShowCheckoutModal(true)}
-              className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 text-xs px-2.5 py-1.5 h-auto whitespace-nowrap shrink-0 gap-1"
+              className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 text-xs px-2.5 py-1.5 h-auto whitespace-nowrap shrink-0 gap-1 font-bold"
             >
               <LogOut className="w-3.5 h-3.5 shrink-0" />
               <span>Trả phòng</span>
@@ -75,30 +102,31 @@ export function TenantCard({ tenant, onRefresh }: TenantCardProps) {
           </div>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+        <div className="mt-3 pt-3 border-t border-slate-100/90 grid grid-cols-2 gap-2 text-xs">
           {tenant.phone ? (
             <a
               href={`tel:${tenant.phone}`}
-              className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 font-semibold truncate"
+              className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 font-bold truncate"
             >
-              <Phone className="w-3.5 h-3.5 shrink-0" />
+              <Phone className="w-3.5 h-3.5 shrink-0 text-indigo-500" />
               <span>{tenant.phone}</span>
             </a>
           ) : (
-            <div className="text-slate-400 italic">Chưa có SĐT</div>
+            <div className="text-slate-400 italic text-[11px]">Chưa có SĐT</div>
           )}
 
-          <div className="flex items-center gap-1.5 text-slate-600 justify-end">
+          <div className="flex items-center gap-1.5 text-slate-500 justify-end">
             <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span>Ở từ: {tenant.start_date}</span>
+            <span>Từ: {tenant.start_date}</span>
           </div>
 
           {tenant.deposit_amount > 0 && (
-            <div className="col-span-2 flex items-center gap-1.5 text-slate-600 bg-slate-50 p-2 rounded-xl mt-1">
-              <DollarSign className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>
-                Tiền cọc: <strong className="text-slate-800">{formatVND(tenant.deposit_amount)}đ</strong>
+            <div className="col-span-2 flex items-center justify-between text-slate-700 bg-slate-50/90 p-2.5 rounded-xl mt-1 border border-slate-100">
+              <span className="flex items-center gap-1.5 font-medium">
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                Tiền cọc phòng:
               </span>
+              <strong className="text-emerald-700 font-black">{formatVND(tenant.deposit_amount)}đ</strong>
             </div>
           )}
         </div>

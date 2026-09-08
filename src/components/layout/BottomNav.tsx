@@ -59,8 +59,8 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200 shadow-lg">
-      <div className="max-w-lg mx-auto px-3 h-16 flex items-center justify-around pb-safe">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/85 backdrop-blur-xl border-t border-slate-200/70 shadow-[0_-8px_30px_rgba(0,0,0,0.06)]">
+      <div className="max-w-lg mx-auto px-2 h-16 flex items-center justify-around pb-safe">
         {NAV_ITEMS.map((item) => {
           const active = isItemActive(item);
           const Icon = item.icon;
@@ -70,22 +70,29 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 py-1 px-2 rounded-xl transition-all duration-150 relative",
+                "flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-2xl transition-all duration-200 relative select-none active:scale-90",
                 active
-                  ? "text-sky-600 font-semibold"
-                  : "text-slate-500 hover:text-slate-800 font-medium"
+                  ? "text-indigo-600 font-extrabold"
+                  : "text-slate-500 hover:text-slate-900 font-medium"
               )}
             >
               {active && (
-                <span className="absolute top-1 w-8 h-1 bg-sky-600 rounded-full animate-in fade-in zoom-in-75 duration-150" />
+                <span className="absolute -top-1 w-7 h-1 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-full shadow-xs shadow-indigo-500/50 animate-in fade-in zoom-in-75 duration-200" />
               )}
-              <Icon
+              <div
                 className={cn(
-                  "h-5 w-5 mb-0.5 transition-transform duration-150",
-                  active && "scale-110 text-sky-600"
+                  "p-1 rounded-xl transition-all duration-200",
+                  active && "bg-indigo-50 text-indigo-600"
                 )}
-              />
-              <span className="text-[11px] leading-tight tracking-tight">
+              >
+                <Icon
+                  className={cn(
+                    "h-5 w-5 transition-transform duration-200",
+                    active && "scale-110 text-indigo-600"
+                  )}
+                />
+              </div>
+              <span className="text-[10.5px] leading-tight tracking-tight mt-0.5">
                 {item.label}
               </span>
             </Link>

@@ -224,7 +224,7 @@ export function ExpenseList({
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Total Pending (Chưa thanh toán) */}
-        <Card className="p-4 bg-gradient-to-br from-rose-50 to-white border-rose-200/80 shadow-xs">
+        <Card className="p-4 bg-gradient-to-br from-rose-50/80 via-white to-rose-50/20 border-rose-200/80 shadow-xs hover:-translate-y-1 hover:shadow-float hover:border-rose-300 transition-all duration-300">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-rose-800 uppercase tracking-wider">
               Tổng chưa thanh toán
@@ -240,7 +240,7 @@ export function ExpenseList({
         </Card>
 
         {/* Total Paid (Đã thanh toán) */}
-        <Card className="p-4 bg-gradient-to-br from-emerald-50 to-white border-emerald-200/80 shadow-xs">
+        <Card className="p-4 bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/20 border-emerald-200/80 shadow-xs hover:-translate-y-1 hover:shadow-float hover:border-emerald-300 transition-all duration-300">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
               Tổng đã thanh toán
@@ -256,7 +256,7 @@ export function ExpenseList({
         </Card>
 
         {/* Total Month Expenses */}
-        <Card className="p-4 bg-gradient-to-br from-slate-50 to-white border-slate-200/80 shadow-xs">
+        <Card className="p-4 bg-gradient-to-br from-slate-50/80 via-white to-indigo-50/20 border-slate-200/80 shadow-xs hover:-translate-y-1 hover:shadow-float hover:border-indigo-200 transition-all duration-300">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
               Tổng chi phí tháng
