@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { History, ChevronDown, ChevronUp, Edit2, Trash2, AlertTriangle, Check } from "lucide-react";
+import { History, ChevronDown, ChevronUp, Edit2, Trash2, AlertTriangle, Check, BookmarkCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { formatVND } from "@/lib/utils";
-import { deleteTenant } from "@/actions/tenants";
+import { deleteTenant, updateTenant } from "@/actions/tenants";
 import { EditTenantModal } from "./EditTenantModal";
 import type { Tenant } from "@/types";
 
@@ -26,6 +26,26 @@ export function TenantHistory({ tenants, onRefresh }: TenantHistoryProps) {
   if (tenants.length === 0) {
     return null;
   }
+
+  const handleToggleDepositOnly = async (t: Tenant) => {
+    const nextVal = !t.deposit_only;
+    try {
+      const res = await updateTenant(t.id, { deposit_only: nextVal });
+      if (res.success) {
+        showToast(
+          nextVal
+            ? `Đã đánh dấu ${t.name} chỉ đặt cọc (không tính vào người ở trên Tổng quan)`
+            : `Đã bỏ đánh dấu chỉ cọc cho ${t.name}`,
+          "success"
+        );
+        if (onRefresh) onRefresh();
+      } else {
+        showToast(res.error || "Lỗi khi cập nhật", "error");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Lỗi khi cập nhật", "error");
+    }
+  };
 
   const handleDeleteConfirm = async () => {
     if (!deletingTenant) return;
@@ -69,17 +89,39 @@ export function TenantHistory({ tenants, onRefresh }: TenantHistoryProps) {
           <div className="space-y-2 pt-1 animate-in fade-in duration-200">
             {tenants.map((t) => (
               <Card key={t.id} className="p-3.5 bg-slate-50/80 border-slate-200 text-xs">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <span className="font-bold text-slate-800 text-sm">{t.name}</span>
+                <div className="flex items-start justify-between gap-2 flex-wrap">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-800 text-sm">{t.name}</span>
+                      {t.deposit_only && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                          <BookmarkCheck className="w-3 h-3 text-amber-600" />
+                          <span>Chỉ cọc, không ở</span>
+                        </span>
+                      )}
+                    </div>
                     {t.phone && <p className="text-slate-600 font-medium">{t.phone}</p>}
                     {t.cccd && (
                       <p className="text-slate-400 font-mono text-[11px]">CCCD: {t.cccd}</p>
                     )}
                   </div>
 
-                  {/* Actions: Edit & Delete */}
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Actions: Toggle deposit_only, Edit, Delete */}
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleDepositOnly(t)}
+                      className={`text-xs px-2.5 py-1 h-7 whitespace-nowrap shrink-0 gap-1 font-semibold ${
+                        t.deposit_only
+                          ? "text-slate-600 border-slate-200 hover:bg-slate-100"
+                          : "text-amber-700 border-amber-200 bg-amber-50/60 hover:bg-amber-100 hover:border-amber-300"
+                      }`}
+                      title={t.deposit_only ? "Bỏ đánh dấu cọc không ở" : "Đánh dấu khách này chỉ đặt cọc, không vào ở"}
+                    >
+                      <BookmarkCheck className="w-3 h-3 shrink-0" />
+                      <span>{t.deposit_only ? "Bỏ chỉ cọc" : "Chỉ cọc không ở"}</span>
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"

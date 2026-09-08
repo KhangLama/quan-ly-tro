@@ -22,9 +22,15 @@ export type RoomUpdate = Database["public"]["Tables"]["rooms"]["Update"] & {
   note?: string;
 };
 
-export type Tenant = Database["public"]["Tables"]["tenants"]["Row"];
-export type TenantInsert = Database["public"]["Tables"]["tenants"]["Insert"];
-export type TenantUpdate = Database["public"]["Tables"]["tenants"]["Update"];
+export type Tenant = Database["public"]["Tables"]["tenants"]["Row"] & {
+  deposit_only?: boolean;
+};
+export type TenantInsert = Database["public"]["Tables"]["tenants"]["Insert"] & {
+  deposit_only?: boolean;
+};
+export type TenantUpdate = Database["public"]["Tables"]["tenants"]["Update"] & {
+  deposit_only?: boolean;
+};
 
 export type Invoice = Database["public"]["Tables"]["invoices"]["Row"];
 export type InvoiceInsert = Database["public"]["Tables"]["invoices"]["Insert"];

@@ -29,6 +29,7 @@ export function EditTenantModal({
   const [status, setStatus] = useState<"active" | "moved_out">("active");
   const [depositAmount, setDepositAmount] = useState("");
   const [isLead, setIsLead] = useState(false);
+  const [depositOnly, setDepositOnly] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +43,7 @@ export function EditTenantModal({
       setStatus(tenant.status || "active");
       setDepositAmount(tenant.deposit_amount ? String(tenant.deposit_amount) : "");
       setIsLead(Boolean(tenant.is_lead));
+      setDepositOnly(Boolean((tenant as any)?.deposit_only));
       setError(null);
     }
   }, [tenant, isOpen]);
@@ -68,6 +70,7 @@ export function EditTenantModal({
       deposit_amount: depositAmount ? Number(depositAmount) : 0,
       is_lead: isMovedOut ? false : isLead,
       status: status,
+      deposit_only: depositOnly,
     });
 
     setLoading(false);
@@ -220,6 +223,26 @@ export function EditTenantModal({
             </label>
           </div>
         )}
+
+        {/* Deposit Only Option */}
+        <div className="pt-1">
+          <label className="flex items-center gap-2.5 p-3 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100/60 cursor-pointer transition-colors">
+            <input
+              type="checkbox"
+              checked={depositOnly}
+              onChange={(e) => setDepositOnly(e.target.checked)}
+              className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-500"
+            />
+            <div>
+              <span className="text-xs font-bold text-amber-900">
+                Khách chỉ đặt cọc, không vào ở thực tế
+              </span>
+              <p className="text-[11px] text-amber-700">
+                Dành cho khách cọc giữ phòng nhưng sau đó không dọn vào. Sẽ không tính là khách ở trên Tổng quan các tháng.
+              </p>
+            </div>
+          </label>
+        </div>
 
         <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>

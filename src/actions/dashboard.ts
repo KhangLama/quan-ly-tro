@@ -122,6 +122,9 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
       // 2. Tenants residing in this room during currentMonth
       const monthTenants = allTenants.filter((t) => {
         if (t.room_id !== room.id) return false;
+        // Never count tenants flagged as deposit-only (placed deposit but never moved in / stayed)
+        if ((t as any).deposit_only) return false;
+
         const tStart = t.start_date
           ? t.start_date.substring(0, 10)
           : t.created_at
@@ -141,7 +144,7 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
 
       // 3. Evaluate whether room was occupied in this specific month
       const currentActiveTenants = allTenants.filter(
-        (t) => t.room_id === room.id && t.status === "active"
+        (t) => t.room_id === room.id && t.status === "active" && !(t as any).deposit_only
       );
 
       let isRoomOccupied = false;
@@ -167,8 +170,10 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
           currentActiveTenants.find((t) => t.is_lead) ||
           currentActiveTenants[0] ||
           (isRoomOccupied
-            ? allTenants.filter((t) => t.room_id === room.id).find((t) => t.is_lead) ||
-              allTenants.filter((t) => t.room_id === room.id)[0] ||
+            ? allTenants
+                .filter((t) => t.room_id === room.id && !(t as any).deposit_only)
+                .find((t) => t.is_lead) ||
+              allTenants.filter((t) => t.room_id === room.id && !(t as any).deposit_only)[0] ||
               null
             : null);
         tenantsCount = isRoomOccupied
@@ -180,8 +185,10 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
           monthTenants.find((t) => t.is_lead) ||
           monthTenants[0] ||
           (isRoomOccupied
-            ? allTenants.filter((t) => t.room_id === room.id).find((t) => t.is_lead) ||
-              allTenants.filter((t) => t.room_id === room.id)[0] ||
+            ? allTenants
+                .filter((t) => t.room_id === room.id && !(t as any).deposit_only)
+                .find((t) => t.is_lead) ||
+              allTenants.filter((t) => t.room_id === room.id && !(t as any).deposit_only)[0] ||
               null
             : null);
 

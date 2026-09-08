@@ -219,12 +219,30 @@ export async function updateTenant(
       }
     }
 
-    const { data: updated, error } = await supabase
+    let { data: updated, error } = await supabase
       .from("tenants")
       .update(data)
       .eq("id", tenantId)
       .select()
       .single();
+
+    // Fallback if deposit_only column not yet migrated in Supabase
+    if (error && (error.code === "PGRST204" || error.message?.includes("deposit_only"))) {
+      const { deposit_only: _, ...safeData } = data;
+      const retry = await supabase
+        .from("tenants")
+        .update(safeData)
+        .eq("id", tenantId)
+        .select()
+        .single();
+      if (!retry.error) {
+        updated = {
+          ...retry.data,
+          deposit_only: data.deposit_only,
+        };
+        error = null;
+      }
+    }
 
     if (error) {
       return { success: false, error: error.message };

@@ -286,5 +286,30 @@ describe("Milestone 3 Empirical Gate Verification Suite", () => {
       expect(card?.leadTenantName).toBe("Nguyen Hoang Tu");
       expect(card?.activeTenantsCount).toBe(1); // EXACTLY 1, NOT 2!
     });
+
+    it("excludes tenants marked as deposit_only from past and current month occupancy", async () => {
+      mockDbStore.reset();
+      const r = (await createRoom({ code: "P9", base_price: 2200000 })).room!;
+
+      // Add a prospective tenant who only placed deposit but never moved in
+      const depTenant = (
+        await addTenant({
+          room_id: r.id,
+          name: "Nguoi Cu Dat Coc",
+          start_date: "2026-08-10",
+        })
+      ).tenant!;
+      await markTenantMovedOut(depTenant.id, "2026-08-20");
+
+      // Flag as deposit_only
+      await updateTenant(depTenant.id, { deposit_only: true });
+
+      // In August 2026, room P9 must be EMPTY (Trống), not rented by this person
+      const dashAug = await getDashboardData("2026-08");
+      const cardAug = dashAug.rooms.find((c) => c.id === r.id);
+      expect(cardAug?.status).toBe("empty");
+      expect(cardAug?.billingBadgeLabel).toBe("Trống");
+      expect(cardAug?.leadTenantName).toBeNull();
+    });
   });
 });
