@@ -13,8 +13,8 @@ export interface DashboardRoomCard {
   leadTenantName: string | null;
   leadTenantPhone: string | null;
   invoice: Invoice | null;
-  billingStatus: "paid" | "pending" | "empty";
-  billingBadgeLabel: "Đã thu" | "Chưa thu" | "Trống";
+  billingStatus: "paid" | "partial" | "pending" | "empty";
+  billingBadgeLabel: "Đã thu" | "Còn nợ" | "Chưa thu" | "Trống";
 }
 
 export interface DashboardDataResult {
@@ -79,11 +79,17 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
     for (const inv of invoices) {
       const amt = Number(inv.total_amount) || 0;
       totalRevenue += amt;
-      if (inv.status === "paid") {
-        collectedAmount += amt;
-      } else {
-        pendingAmount += amt;
-      }
+
+      const paidAmt =
+        (inv as any).paid_amount !== undefined && (inv as any).paid_amount !== null
+          ? Math.max(0, Number((inv as any).paid_amount))
+          : inv.status === "paid"
+          ? amt
+          : 0;
+
+      const remAmt = Math.max(0, amt - paidAmt);
+      collectedAmount += paidAmt;
+      pendingAmount += remAmt;
     }
 
     // Compute expenses KPIs
@@ -204,14 +210,28 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
           : 0;
       }
 
-      let billingStatus: "paid" | "pending" | "empty" = "empty";
-      let billingBadgeLabel: "Đã thu" | "Chưa thu" | "Trống" = "Trống";
+      let billingStatus: "paid" | "partial" | "pending" | "empty" = "empty";
+      let billingBadgeLabel: "Đã thu" | "Còn nợ" | "Chưa thu" | "Trống" = "Trống";
 
       if (!isRoomOccupied) {
         billingStatus = "empty";
         billingBadgeLabel = "Trống";
       } else if (invoice) {
-        if (invoice.status === "paid") {
+        const invTotal = Number(invoice.total_amount) || 0;
+        const invPaid =
+          (invoice as any).paid_amount !== undefined && (invoice as any).paid_amount !== null
+            ? Math.max(0, Number((invoice as any).paid_amount))
+            : invoice.status === "paid"
+            ? invTotal
+            : 0;
+
+        if (invPaid >= invTotal && invTotal > 0) {
+          billingStatus = "paid";
+          billingBadgeLabel = "Đã thu";
+        } else if (invPaid > 0 && invPaid < invTotal) {
+          billingStatus = "partial";
+          billingBadgeLabel = "Còn nợ";
+        } else if (invoice.status === "paid") {
           billingStatus = "paid";
           billingBadgeLabel = "Đã thu";
         } else {

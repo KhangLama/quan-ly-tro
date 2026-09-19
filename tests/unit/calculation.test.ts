@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { calculateInvoice } from "../fixtures/seed-data.ts";
+import {
+  calculateInvoice,
+  calculateProratedRent,
+  getDaysInMonth,
+  calculateStayDaysFromDates,
+  calculatePaymentStatus,
+  forgiveRemainingDebt,
+} from "../fixtures/seed-data.ts";
 import type { CalculationInput } from "../fixtures/seed-data.ts";
 
 describe("Unit Test: Electricity, Water & Grand Total Calculations", () => {
@@ -178,6 +185,103 @@ describe("Unit Test: Electricity, Water & Grand Total Calculations", () => {
 
     const result = calculateInvoice(input);
     expect(result.totalAmount).toBe(0);
+  });
+
+  describe("Prorated Rent Calculations (R1)", () => {
+    it("calculates prorated rent for 10 days in a 30-day month (3,000,000 -> 1,000,000)", () => {
+      const prorated = calculateProratedRent(3000000, 30, 10);
+      expect(prorated).toBe(1000000);
+    });
+
+    it("calculates prorated rent for 14 days in February (28 days, 2,800,000 -> 1,400,000)", () => {
+      const prorated = calculateProratedRent(2800000, 28, 14);
+      expect(prorated).toBe(1400000);
+    });
+
+    it("returns 0 for 0 stay days or non-positive days in month", () => {
+      expect(calculateProratedRent(3000000, 30, 0)).toBe(0);
+      expect(calculateProratedRent(3000000, 0, 10)).toBe(0);
+      expect(calculateProratedRent(3000000, -1, 10)).toBe(0);
+    });
+
+    it("clamps stay days to the total days in month", () => {
+      expect(calculateProratedRent(3000000, 30, 35)).toBe(3000000);
+    });
+
+    it("calculates invoice with isProrated flag enabled", () => {
+      const input: CalculationInput = {
+        basePrice: 3000000,
+        oldElectric: 0,
+        newElectric: 0,
+        oldWater: 0,
+        newWater: 0,
+        electricPrice: 3500,
+        waterPrice: 25000,
+        servicePrice: 0,
+        isProrated: true,
+        daysInMonth: 30,
+        stayDays: 10,
+      };
+      const result = calculateInvoice(input);
+      expect(result.basePrice).toBe(1000000);
+      expect(result.originalBasePrice).toBe(3000000);
+      expect(result.totalAmount).toBe(1000000);
+      expect(result.isProrated).toBe(true);
+      expect(result.stayDays).toBe(10);
+    });
+
+    it("computes stay days correctly between start and end dates inclusive", () => {
+      expect(calculateStayDaysFromDates("2026-09-01", "2026-09-10")).toBe(10);
+      expect(calculateStayDaysFromDates("2026-09-05", "2026-09-05")).toBe(1);
+      expect(calculateStayDaysFromDates("2026-09-10", "2026-09-01")).toBe(0);
+    });
+
+    it("returns correct days in month across calendar months", () => {
+      expect(getDaysInMonth("2026-02")).toBe(28);
+      expect(getDaysInMonth("2024-02")).toBe(29);
+      expect(getDaysInMonth("2026-04")).toBe(30);
+      expect(getDaysInMonth("2026-08")).toBe(31);
+    });
+  });
+
+  describe("Partial Payment & Debt Forgiveness Calculations (R2)", () => {
+    it("evaluates unpaid status when paidAmount is 0", () => {
+      const status = calculatePaymentStatus(3000000, 0);
+      expect(status.status).toBe("pending");
+      expect(status.label).toBe("Chưa thu");
+      expect(status.remainingAmount).toBe(3000000);
+    });
+
+    it("evaluates partially paid status when paidAmount is less than totalAmount", () => {
+      const status = calculatePaymentStatus(3000000, 2000000);
+      expect(status.status).toBe("partial");
+      expect(status.label).toBe("Còn nợ");
+      expect(status.remainingAmount).toBe(1000000);
+    });
+
+    it("evaluates fully paid status when paidAmount equals or exceeds totalAmount", () => {
+      const status = calculatePaymentStatus(3000000, 3000000);
+      expect(status.status).toBe("paid");
+      expect(status.label).toBe("Đã thu");
+      expect(status.remainingAmount).toBe(0);
+
+      const overpaid = calculatePaymentStatus(3000000, 3500000);
+      expect(overpaid.status).toBe("paid");
+      expect(overpaid.remainingAmount).toBe(0);
+    });
+
+    it("forgives remaining debt by transferring debt to discount and balancing invoice to 0", () => {
+      const forgiven = forgiveRemainingDebt({
+        subtotal: 3000000,
+        currentDiscount: 0,
+        paidAmount: 2000000,
+      });
+
+      expect(forgiven.newDiscount).toBe(1000000);
+      expect(forgiven.newTotalAmount).toBe(2000000);
+      expect(forgiven.remainingAmount).toBe(0);
+      expect(forgiven.newReason).toContain("Miễn giảm nợ khi tất toán");
+    });
   });
 });
 

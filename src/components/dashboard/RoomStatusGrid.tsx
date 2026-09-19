@@ -13,7 +13,7 @@ interface RoomStatusGridProps {
   selectedMonth: string;
 }
 
-type FilterStatus = "all" | "pending" | "paid" | "empty";
+type FilterStatus = "all" | "pending" | "partial" | "paid" | "empty";
 
 export function RoomStatusGrid({ rooms, selectedMonth }: RoomStatusGridProps) {
   const [filter, setFilter] = useState<FilterStatus>("all");
@@ -26,14 +26,16 @@ export function RoomStatusGrid({ rooms, selectedMonth }: RoomStatusGridProps) {
   // Counts for filter pills
   const counts = useMemo(() => {
     let pending = 0;
+    let partial = 0;
     let paid = 0;
     let empty = 0;
     sortedRooms.forEach((r) => {
       if (r.billingBadgeLabel === "Chưa thu") pending++;
+      else if (r.billingBadgeLabel === "Còn nợ") partial++;
       else if (r.billingBadgeLabel === "Đã thu") paid++;
       else if (r.billingBadgeLabel === "Trống") empty++;
     });
-    return { all: sortedRooms.length, pending, paid, empty };
+    return { all: sortedRooms.length, pending, partial, paid, empty };
   }, [sortedRooms]);
 
   // Filtered rooms
@@ -42,6 +44,8 @@ export function RoomStatusGrid({ rooms, selectedMonth }: RoomStatusGridProps) {
 
     if (filter === "pending") {
       list = list.filter((r) => r.billingBadgeLabel === "Chưa thu");
+    } else if (filter === "partial") {
+      list = list.filter((r) => r.billingBadgeLabel === "Còn nợ");
     } else if (filter === "paid") {
       list = list.filter((r) => r.billingBadgeLabel === "Đã thu");
     } else if (filter === "empty") {
@@ -99,6 +103,21 @@ export function RoomStatusGrid({ rooms, selectedMonth }: RoomStatusGridProps) {
             <span>Chưa thu ({counts.pending})</span>
           </button>
 
+          {counts.partial > 0 && (
+            <button
+              type="button"
+              onClick={() => setFilter("partial")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                filter === "partial"
+                  ? "bg-amber-600 text-white shadow-xs -translate-y-0.5"
+                  : "bg-amber-50/70 hover:bg-amber-100/70 text-amber-800 border border-amber-200/80"
+              }`}
+            >
+              <AlertCircle className="w-3 h-3" />
+              <span>Còn nợ ({counts.partial})</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setFilter("paid")}
@@ -150,12 +169,13 @@ export function RoomStatusGrid({ rooms, selectedMonth }: RoomStatusGridProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
           {filteredRooms.map((room) => {
             const isPaid = room.billingBadgeLabel === "Đã thu";
+            const isPartial = room.billingBadgeLabel === "Còn nợ";
             const isPending = room.billingBadgeLabel === "Chưa thu";
             const isEmpty = room.billingBadgeLabel === "Trống";
 
             let badgeVariant: "success" | "warning" | "secondary" = "secondary";
             if (isPaid) badgeVariant = "success";
-            else if (isPending) badgeVariant = "warning";
+            else if (isPartial || isPending) badgeVariant = "warning";
 
             return (
               <Link key={room.id} href={`/rooms/${room.id}`} className="block group select-none">
@@ -164,6 +184,8 @@ export function RoomStatusGrid({ rooms, selectedMonth }: RoomStatusGridProps) {
                   className={`p-4 transition-all duration-300 relative border ${
                     isPending
                       ? "hover:border-amber-300/90 bg-gradient-to-b from-white via-white to-amber-50/20"
+                      : isPartial
+                      ? "hover:border-amber-400/90 bg-gradient-to-b from-white via-white to-amber-100/30"
                       : isPaid
                       ? "hover:border-emerald-300/90 bg-gradient-to-b from-white via-white to-emerald-50/20"
                       : "hover:border-slate-300 bg-white"

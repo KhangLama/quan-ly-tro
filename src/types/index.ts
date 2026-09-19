@@ -53,7 +53,6 @@ export interface RoomWithDetails extends Room {
   latestInvoice?: Invoice | null;
 }
 
-// Invoice calculation types
 export interface CalculationInput {
   basePrice: number;
   oldElectric: number;
@@ -64,6 +63,10 @@ export interface CalculationInput {
   waterPrice: number;
   servicePrice: number;
   discount?: number;
+  isProrated?: boolean;
+  stayDays?: number;
+  daysInMonth?: number;
+  paidAmount?: number;
 }
 
 export interface CalculationResult {
@@ -73,8 +76,20 @@ export interface CalculationResult {
   waterCost: number;
   servicePrice: number;
   basePrice: number;
+  originalBasePrice?: number;
   discount: number;
   totalAmount: number;
+  isProrated?: boolean;
+  stayDays?: number;
+  daysInMonth?: number;
+  paidAmount?: number;
+  remainingAmount: number;
+  remainingBalance: number;
+  paymentStatus: {
+    status: "paid" | "partial" | "pending";
+    label: "Đã thu" | "Còn nợ" | "Chưa thu";
+    remainingAmount: number;
+  };
 }
 
 // Dashboard statistics

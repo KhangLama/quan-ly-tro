@@ -123,9 +123,11 @@ export interface Database {
           service_price: number;
           discount?: number;
           discount_reason?: string;
+          note?: string;
           total_amount: number;
           status: "pending" | "paid";
           paid_at: string | null;
+          paid_amount?: number | null;
           created_at: string;
         };
         Insert: {
@@ -142,9 +144,11 @@ export interface Database {
           service_price?: number;
           discount?: number;
           discount_reason?: string;
+          note?: string;
           total_amount?: number;
           status?: "pending" | "paid";
           paid_at?: string | null;
+          paid_amount?: number | null;
           created_at?: string;
         };
         Update: {
@@ -161,9 +165,11 @@ export interface Database {
           service_price?: number;
           discount?: number;
           discount_reason?: string;
+          note?: string;
           total_amount?: number;
           status?: "pending" | "paid";
           paid_at?: string | null;
+          paid_amount?: number | null;
           created_at?: string;
         };
       };

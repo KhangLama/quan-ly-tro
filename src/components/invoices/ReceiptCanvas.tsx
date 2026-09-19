@@ -33,6 +33,12 @@ export interface ReceiptData {
   discountReason?: string;
   totalAmount: number;
   paymentConfig?: PaymentAccountsConfig;
+  isProrated?: boolean;
+  stayDays?: number;
+  daysInMonth?: number;
+  stayDateRange?: string;
+  originalBasePrice?: number;
+  paidAmount?: number;
 }
 
 interface ReceiptCanvasProps {
@@ -69,6 +75,10 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
     // Calculate exact split amounts
     const roomAmount = Math.max(0, data.basePrice - (data.discount || 0));
     const utilityAmount = Math.max(0, data.totalAmount - roomAmount);
+    const effectiveQrAmount =
+      data.paidAmount !== undefined && data.paidAmount > 0 && data.paidAmount < data.totalAmount
+        ? data.totalAmount - data.paidAmount
+        : data.totalAmount;
 
     // Generate VietQR URLs (omitting description so the banking app applies its default transfer memo)
     const roomQrUrl = paymentConfig.room.accountNumber
@@ -94,7 +104,7 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
           bankCode: paymentConfig.room.bank,
           accountNumber: paymentConfig.room.accountNumber,
           accountName: paymentConfig.room.accountName,
-          amount: data.totalAmount,
+          amount: effectiveQrAmount,
         })
       : null;
 
@@ -170,12 +180,37 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
           <tbody className="divide-y divide-black">
             {/* 1. Rent */}
             <tr>
-              <td className="border-r border-black p-1.5 font-medium">1- Tiền thuê</td>
-              <td className="border-r border-black p-1.5 text-slate-500 italic"></td>
-              <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">
-                {formatVND(data.basePrice)} đ
+              <td className="border-r border-black p-1.5 font-medium">
+                <div>1- Tiền thuê</div>
+                {data.isProrated && (
+                  <div className="text-[10px] text-indigo-700 font-bold tracking-tight">
+                    (Theo ngày thực tế)
+                  </div>
+                )}
               </td>
-              <td className="border-r border-black p-1.5 text-center">1</td>
+              <td className="border-r border-black p-1.5 text-[11px] text-slate-800 leading-normal">
+                {data.isProrated && data.stayDays ? (
+                  <div className="space-y-0.5">
+                    <div>
+                      Ở thực tế: <strong>{data.stayDays} ngày</strong>
+                      {data.daysInMonth ? ` (${data.daysInMonth} ngày/tháng)` : ""}
+                    </div>
+                    {data.stayDateRange && (
+                      <div className="text-slate-600 font-medium text-[10px]">
+                        Khoảng ngày: {data.stayDateRange}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-slate-500 italic">Trọn tháng</span>
+                )}
+              </td>
+              <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">
+                {formatVND(data.isProrated && data.originalBasePrice ? data.originalBasePrice : data.basePrice)} đ
+              </td>
+              <td className="border-r border-black p-1.5 text-center font-bold">
+                {data.isProrated && data.stayDays ? `${data.stayDays} ngày` : "1"}
+              </td>
               <td className="p-1.5 text-right font-bold pr-2 whitespace-nowrap">
                 {formatVND(data.basePrice)} đ
               </td>
@@ -260,6 +295,36 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                 {formatVND(data.totalAmount)} đ
               </td>
             </tr>
+
+            {/* PARTIAL PAYMENT ROWS IF APPLICABLE */}
+            {data.paidAmount !== undefined && data.paidAmount > 0 && data.paidAmount < data.totalAmount && (
+              <>
+                <tr className="bg-emerald-50/80 font-bold text-xs border-t border-black">
+                  <td colSpan={4} className="border-r border-black p-1.5 text-right text-emerald-800">
+                    Đã thanh toán (Thực nhận):
+                  </td>
+                  <td className="p-1.5 text-right font-black text-emerald-700 pr-2 whitespace-nowrap">
+                    {formatVND(data.paidAmount)} đ
+                  </td>
+                </tr>
+                <tr className="bg-rose-50/90 font-bold text-xs border-t border-black">
+                  <td colSpan={4} className="border-r border-black p-1.5 text-right text-rose-800 uppercase">
+                    Còn nợ lại:
+                  </td>
+                  <td className="p-1.5 text-right font-black text-rose-700 pr-2 whitespace-nowrap">
+                    {formatVND(data.totalAmount - data.paidAmount)} đ
+                  </td>
+                </tr>
+              </>
+            )}
+
+            {data.paidAmount !== undefined && data.paidAmount >= data.totalAmount && data.totalAmount > 0 && (
+              <tr className="bg-emerald-50/80 font-bold text-xs border-t border-black">
+                <td colSpan={5} className="p-1.5 text-center text-emerald-800 uppercase tracking-wider">
+                  ✓ ĐÃ THANH TOÁN ĐỦ ({formatVND(data.paidAmount)} đ)
+                </td>
+              </tr>
+            )}
 
             {/* NOTE ROW */}
             <tr>

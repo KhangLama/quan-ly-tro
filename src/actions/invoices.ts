@@ -139,6 +139,10 @@ export async function saveInvoice(data: {
   discount_reason?: string;
   note?: string;
   status?: "pending" | "paid";
+  paid_amount?: number;
+  is_prorated?: boolean;
+  stay_days?: number;
+  days_in_month?: number;
 }): Promise<SaveInvoiceResult> {
   try {
     if (!data.room_id || !data.month) {
@@ -155,6 +159,9 @@ export async function saveInvoice(data: {
       waterPrice: Number(data.water_price) || 0,
       servicePrice: Number(data.service_price) || 0,
       discount: Number(data.discount) || 0,
+      isProrated: data.is_prorated,
+      stayDays: data.stay_days,
+      daysInMonth: data.days_in_month,
     });
 
     const supabase = await createClient();
@@ -168,7 +175,22 @@ export async function saveInvoice(data: {
       .maybeSingle();
 
     let savedInvoice: Invoice | null = null;
-    const invoiceStatus = data.status || "pending";
+    
+    let effectivePaidAmount: number;
+    if (data.paid_amount !== undefined && data.paid_amount !== null) {
+      effectivePaidAmount = Math.max(0, Number(data.paid_amount));
+    } else if (data.status === "paid") {
+      effectivePaidAmount = calculation.totalAmount;
+    } else {
+      effectivePaidAmount = 0;
+    }
+
+    let invoiceStatus: "pending" | "paid";
+    if (effectivePaidAmount >= calculation.totalAmount) {
+      invoiceStatus = "paid";
+    } else {
+      invoiceStatus = "pending";
+    }
 
     const basePayload: any = {
       old_electric: Number(data.old_electric) || 0,
@@ -185,6 +207,7 @@ export async function saveInvoice(data: {
       total_amount: calculation.totalAmount,
       status: invoiceStatus,
       paid_at: invoiceStatus === "paid" ? new Date().toISOString() : null,
+      paid_amount: effectivePaidAmount,
     };
 
     if (existing) {
@@ -196,20 +219,20 @@ export async function saveInvoice(data: {
         .select()
         .single();
 
-      // If schema missing note or discount columns (PGRST204), gracefully fallback
+      // If schema missing optional columns (PGRST204), gracefully fallback
       if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
-        // Step 1: Try dropping only 'note' (keeping discount and discount_reason)
-        const { note: _, ...withoutNote } = basePayload;
+        // Step 1: Try dropping paid_amount and note
+        const { paid_amount: _, note: __, ...withoutPaidAndNote } = basePayload;
         let retry = await supabase
           .from("invoices")
-          .update(withoutNote)
+          .update(withoutPaidAndNote)
           .eq("id", existing.id)
           .select()
           .single();
 
-        // Step 2: If still failing, drop all optional columns
+        // Step 2: If still failing, drop discount as well
         if (retry.error && (retry.error.code === "PGRST204" || retry.error.message?.includes("column"))) {
-          const { discount: __, discount_reason: ___, ...legacyPayload } = withoutNote;
+          const { discount: ___, discount_reason: ____, ...legacyPayload } = withoutPaidAndNote;
           retry = await supabase
             .from("invoices")
             .update(legacyPayload)
@@ -229,6 +252,7 @@ export async function saveInvoice(data: {
             discount: calculation.discount,
             discount_reason: data.discount_reason,
             note: data.note,
+            paid_amount: effectivePaidAmount,
           }
         : null;
     } else {
@@ -245,19 +269,17 @@ export async function saveInvoice(data: {
         .select()
         .single();
 
-      // If schema missing note or discount columns (PGRST204), gracefully fallback
+      // If schema missing optional columns (PGRST204), gracefully fallback
       if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
-        // Step 1: Try dropping only 'note' (keeping discount and discount_reason)
-        const { note: _, ...withoutNote } = insertPayload;
+        const { paid_amount: _, note: __, ...withoutPaidAndNote } = insertPayload;
         let retry = await supabase
           .from("invoices")
-          .insert(withoutNote)
+          .insert(withoutPaidAndNote)
           .select()
           .single();
 
-        // Step 2: If still failing, drop all optional columns
         if (retry.error && (retry.error.code === "PGRST204" || retry.error.message?.includes("column"))) {
-          const { discount: __, discount_reason: ___, ...legacyPayload } = withoutNote;
+          const { discount: ___, discount_reason: ____, ...legacyPayload } = withoutPaidAndNote;
           retry = await supabase
             .from("invoices")
             .insert(legacyPayload)
@@ -276,6 +298,7 @@ export async function saveInvoice(data: {
             discount: calculation.discount,
             discount_reason: data.discount_reason,
             note: data.note,
+            paid_amount: effectivePaidAmount,
           }
         : null;
     }
@@ -310,16 +333,32 @@ export async function toggleInvoiceStatus(invoiceId: string): Promise<SaveInvoic
 
     const nextStatus = invoice.status === "paid" ? "pending" : "paid";
     const paidAt = nextStatus === "paid" ? new Date().toISOString() : null;
+    const nextPaidAmount = nextStatus === "paid" ? Number(invoice.total_amount) : 0;
 
-    const { data: updated, error } = await supabase
+    let { data: updated, error } = await supabase
       .from("invoices")
       .update({
         status: nextStatus,
         paid_at: paidAt,
+        paid_amount: nextPaidAmount,
       })
       .eq("id", invoiceId)
       .select()
       .single();
+
+    if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
+      const retry = await supabase
+        .from("invoices")
+        .update({
+          status: nextStatus,
+          paid_at: paidAt,
+        })
+        .eq("id", invoiceId)
+        .select()
+        .single();
+      updated = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       return { success: false, error: error.message };

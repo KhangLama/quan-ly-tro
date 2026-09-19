@@ -18,12 +18,22 @@ import {
   Tag,
   Trash2,
   FileText,
+  Clock,
+  Calculator,
+  Wallet,
+  CalendarDays,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
-import { calculateInvoice } from "@/lib/calculations/invoice";
+import {
+  calculateInvoice,
+  calculateProratedRent,
+  getDaysInMonth,
+  calculateStayDaysFromDates,
+  forgiveRemainingDebt,
+} from "@/lib/calculations/invoice";
 import { formatVND } from "@/lib/utils";
 import {
   getInvoiceFormData,
@@ -63,6 +73,18 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
   const [waterPrice, setWaterPrice] = useState<number>(25000);
   const [servicePrice, setServicePrice] = useState<number>(0);
   const [basePrice, setBasePrice] = useState<number>(2500000);
+
+  // Prorated Rent (R1)
+  const [isProrated, setIsProrated] = useState<boolean>(false);
+  const [proratedMode, setProratedMode] = useState<"days" | "range">("days");
+  const [stayDays, setStayDays] = useState<string>("10");
+  const [stayFrom, setStayFrom] = useState<string>("");
+  const [stayTo, setStayTo] = useState<string>("");
+
+  // Partial Payment (R2)
+  const [paidAmount, setPaidAmount] = useState<string>("0");
+
+  const daysInMonth = useMemo(() => getDaysInMonth(month), [month]);
 
   // Discount / Event
   const [discount, setDiscount] = useState<string>("0");
@@ -113,7 +135,9 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       setNewElectric(String(res.existingInvoice.new_electric));
       setOldWater(String(res.existingInvoice.old_water));
       setNewWater(String(res.existingInvoice.new_water));
-      setBasePrice(Number(res.existingInvoice.base_price));
+      setBasePrice(
+        Number(res.selectedRoom?.base_price) || Number(res.existingInvoice.base_price) || 0
+      );
 
       // If the invoice is already paid, preserve historical rates.
       // If pending / in progress, adopt current active settings rates!
@@ -164,6 +188,31 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       );
       setCustomNote(savedNote || "");
 
+      const invPaid = (res.existingInvoice as any).paid_amount;
+      if (invPaid !== undefined && invPaid !== null) {
+        setPaidAmount(String(invPaid));
+      } else if (res.existingInvoice.status === "paid") {
+        setPaidAmount(String(res.existingInvoice.total_amount));
+      } else {
+        setPaidAmount("0");
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          const savedProrated = localStorage.getItem(`inv_prorated_${targetRoomId}_${targetMonth}`);
+          if (savedProrated) {
+            const parsed = JSON.parse(savedProrated);
+            setIsProrated(Boolean(parsed.isProrated));
+            if (parsed.stayDays) setStayDays(String(parsed.stayDays));
+            if (parsed.proratedMode) setProratedMode(parsed.proratedMode);
+            if (parsed.stayFrom) setStayFrom(parsed.stayFrom);
+            if (parsed.stayTo) setStayTo(parsed.stayTo);
+          } else {
+            setIsProrated(false);
+          }
+        } catch {}
+      }
+
       setSavedInvoice(res.existingInvoice);
     } else {
       // Auto-fill old meters from previous reading
@@ -174,6 +223,8 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       setDiscount("0");
       setDiscountReason("");
       setCustomNote("");
+      setIsProrated(false);
+      setPaidAmount("0");
       setSavedInvoice(null);
     }
 
@@ -196,8 +247,26 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       waterPrice,
       servicePrice,
       discount: Number(discount) || 0,
+      isProrated,
+      stayDays: Number(stayDays) || 0,
+      daysInMonth,
+      paidAmount: Number(paidAmount) || 0,
     });
-  }, [basePrice, oldElectric, newElectric, oldWater, newWater, electricPrice, waterPrice, servicePrice, discount]);
+  }, [
+    basePrice,
+    oldElectric,
+    newElectric,
+    oldWater,
+    newWater,
+    electricPrice,
+    waterPrice,
+    servicePrice,
+    discount,
+    isProrated,
+    stayDays,
+    daysInMonth,
+    paidAmount,
+  ]);
 
   // Handle room change
   const handleRoomSelect = (newRoomId: string) => {
@@ -216,6 +285,8 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
     setErrorMsg(null);
     setSaveSuccess(false);
 
+    const numPaid = Number(paidAmount) || 0;
+
     const res = await saveInvoice({
       room_id: roomId,
       month,
@@ -223,14 +294,18 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       new_electric: Number(newElectric) || 0,
       old_water: Number(oldWater) || 0,
       new_water: Number(newWater) || 0,
-      base_price: basePrice,
+      base_price: Number(selectedRoom?.base_price) || basePrice,
       electric_price: electricPrice,
       water_price: waterPrice,
       service_price: servicePrice,
       discount: Number(discount) || 0,
       discount_reason: discountReason.trim(),
       note: customNote.trim(),
-      status,
+      status: numPaid >= calculation.totalAmount ? "paid" : "pending",
+      paid_amount: numPaid,
+      is_prorated: isProrated,
+      stay_days: isProrated ? Number(stayDays) || 0 : undefined,
+      days_in_month: daysInMonth,
     });
 
     setSaving(false);
@@ -238,6 +313,10 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
     if (res.success && res.invoice) {
       if (typeof window !== "undefined") {
         try {
+          localStorage.setItem(
+            `inv_prorated_${roomId}_${month}`,
+            JSON.stringify({ isProrated, stayDays, proratedMode, stayFrom, stayTo })
+          );
           if (discountReason.trim()) {
             localStorage.setItem(`inv_reason_${roomId}_${month}`, discountReason.trim());
           } else {
@@ -294,8 +373,26 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
     }
   };
 
-  // Build live receipt data
   const selectedRoom = formData?.rooms.find((r) => r.id === roomId);
+
+  // Handle Forgive Debt (Tất toán / Miễn giảm phần nợ còn lại)
+  const handleForgiveDebt = () => {
+    const remaining = calculation.remainingBalance;
+    if (remaining <= 0) return;
+    const subtotal =
+      calculation.basePrice +
+      calculation.electricCost +
+      calculation.waterCost +
+      calculation.servicePrice;
+    const result = forgiveRemainingDebt({
+      subtotal,
+      currentDiscount: Number(discount) || 0,
+      paidAmount: Number(paidAmount) || 0,
+      currentReason: discountReason,
+    });
+    setDiscount(String(result.newDiscount));
+    setDiscountReason(result.newReason);
+  };
 
   const paymentConfig = useMemo(() => {
     if (formData?.settings?.bank_info) {
@@ -341,6 +438,15 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       discount: calculation.discount,
       discountReason: discountReason.trim() || undefined,
       totalAmount: calculation.totalAmount,
+      isProrated,
+      stayDays: isProrated ? Number(stayDays) || 0 : undefined,
+      daysInMonth: isProrated ? daysInMonth : undefined,
+      stayDateRange:
+        isProrated && stayFrom && stayTo
+          ? `${stayFrom.substring(8, 10)}/${stayFrom.substring(5, 7)} - ${stayTo.substring(8, 10)}/${stayTo.substring(5, 7)}`
+          : undefined,
+      originalBasePrice: isProrated ? (Number(selectedRoom.base_price) || basePrice) : undefined,
+      paidAmount: Number(paidAmount) || 0,
     };
   }, [
     selectedRoom,
@@ -356,6 +462,13 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
     calculation,
     discountReason,
     customNote,
+    isProrated,
+    stayDays,
+    daysInMonth,
+    stayFrom,
+    stayTo,
+    paidAmount,
+    basePrice,
   ]);
 
   // Handle Share: Share ONLY the image file
@@ -559,6 +672,163 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
         )}
       </Card>
 
+      {/* Card 1.5: Prorated Rent (Tính tiền theo ngày ở thực tế - R1) */}
+      <Card className="p-4 bg-white/95 backdrop-blur-xs border-slate-200/80 shadow-xs space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <CalendarDays className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Tiền phòng theo ngày ở (Prorated)</span>
+            </h2>
+            {isProrated && (
+              <Badge variant="info" size="sm" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                Ở {stayDays}/{daysInMonth} ngày
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-slate-500">
+              {isProrated ? "Theo ngày ở thực tế" : "Tròn tháng"}
+            </span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isProrated}
+                onChange={(e) => setIsProrated(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+            </label>
+          </div>
+        </div>
+
+        {isProrated ? (
+          <div className="space-y-3 pt-1 animate-in fade-in duration-150">
+            {/* Mode selection: Enter days directly or Pick date range */}
+            <div className="flex items-center gap-2 bg-slate-100/80 p-1 rounded-xl text-[11px] font-semibold">
+              <button
+                type="button"
+                onClick={() => setProratedMode("days")}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-center transition-all ${
+                  proratedMode === "days"
+                    ? "bg-white text-indigo-700 shadow-2xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Nhập số ngày trực tiếp
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProratedMode("range");
+                  if (!stayFrom || !stayTo) {
+                    const defaultFrom = `${month}-01`;
+                    const daysNum = Math.min(daysInMonth, Number(stayDays) || 10);
+                    const defaultTo = `${month}-${String(daysNum).padStart(2, "0")}`;
+                    setStayFrom(defaultFrom);
+                    setStayTo(defaultTo);
+                  }
+                }}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-center transition-all ${
+                  proratedMode === "range"
+                    ? "bg-white text-indigo-700 shadow-2xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Chọn khoảng ngày (Từ - Đến)
+              </button>
+            </div>
+
+            {proratedMode === "days" ? (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-semibold text-slate-600">
+                    Số ngày ở thực tế trong tháng {month} (tối đa {daysInMonth} ngày)
+                  </label>
+                  <span className="text-[11px] font-bold text-indigo-600">
+                    {stayDays} / {daysInMonth} ngày
+                  </span>
+                </div>
+                <Input
+                  type="number"
+                  min="1"
+                  max={daysInMonth}
+                  value={stayDays}
+                  onChange={(e) => setStayDays(e.target.value)}
+                  placeholder="Ví dụ: 10"
+                  className="font-bold text-sm text-indigo-700 bg-indigo-50/30 border-indigo-200 focus:border-indigo-500"
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Từ ngày
+                  </label>
+                  <Input
+                    type="date"
+                    value={stayFrom}
+                    onChange={(e) => {
+                      const newFrom = e.target.value;
+                      setStayFrom(newFrom);
+                      if (newFrom && stayTo) {
+                        const days = calculateStayDaysFromDates(newFrom, stayTo);
+                        setStayDays(String(days));
+                      }
+                    }}
+                    className="text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Đến ngày
+                  </label>
+                  <Input
+                    type="date"
+                    value={stayTo}
+                    onChange={(e) => {
+                      const newTo = e.target.value;
+                      setStayTo(newTo);
+                      if (stayFrom && newTo) {
+                        const days = calculateStayDaysFromDates(stayFrom, newTo);
+                        setStayDays(String(days));
+                      }
+                    }}
+                    className="text-xs font-semibold"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Formula & Daily rate explanation box */}
+            <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-2.5 text-xs space-y-1">
+              <div className="flex items-center justify-between text-indigo-950 font-bold">
+                <span>Tiền phòng thực tính:</span>
+                <span className="text-sm font-black text-indigo-700">
+                  {formatVND(calculation.basePrice)}đ
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 flex items-center justify-between">
+                <span>Đơn giá ngày:</span>
+                <span>
+                  ~{formatVND(Math.round((Number(selectedRoom?.base_price) || basePrice) / daysInMonth))}đ/ngày
+                </span>
+              </div>
+              <div className="text-[10px] text-indigo-600/90 font-mono pt-0.5 border-t border-indigo-100/80">
+                ({formatVND(Number(selectedRoom?.base_price) || basePrice)}đ ÷ {daysInMonth} ngày) × {stayDays || 0} ngày
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-50 p-2.5 rounded-xl flex items-center justify-between text-xs text-slate-600">
+            <span>Tiền phòng nguyên tháng:</span>
+            <strong className="text-slate-900 font-bold">
+              {formatVND(Number(selectedRoom?.base_price) || basePrice)}đ
+            </strong>
+          </div>
+        )}
+      </Card>
+
       {/* Card 2: Electricity Meters */}
       <Card className="p-4 bg-white/95 backdrop-blur-xs border-slate-200/80 shadow-xs space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-1">
@@ -733,6 +1003,139 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
             </button>
           ))}
         </div>
+      </Card>
+
+      {/* Card 3.5: Payment & Real Collection (Quản lý thực thu & thanh toán một phần / Xóa nợ - R2) */}
+      <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <Wallet className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Thanh toán & Thực thu</span>
+            </h2>
+            <Badge
+              variant={
+                calculation.paymentStatus.status === "paid"
+                  ? "success"
+                  : calculation.paymentStatus.status === "partial"
+                  ? "warning"
+                  : "secondary"
+              }
+              size="sm"
+            >
+              {calculation.paymentStatus.label}
+            </Badge>
+          </div>
+          <span className="text-[11px] font-bold text-slate-500">
+            Tổng tiền: {formatVND(calculation.totalAmount)}đ
+          </span>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+            Số tiền khách thực tế đã trả (VNĐ)
+          </label>
+          <div className="relative">
+            <Input
+              type="number"
+              min="0"
+              value={paidAmount}
+              onChange={(e) => setPaidAmount(e.target.value)}
+              placeholder="0"
+              className={`font-bold text-sm ${
+                calculation.paymentStatus.status === "paid"
+                  ? "text-emerald-700 bg-emerald-50/30 border-emerald-200 focus:border-emerald-500"
+                  : calculation.paymentStatus.status === "partial"
+                  ? "text-amber-700 bg-amber-50/30 border-amber-200 focus:border-amber-500"
+                  : "text-slate-800 bg-white"
+              }`}
+            />
+            <span className="absolute right-3 top-2.5 text-xs text-slate-400">
+              đ
+            </span>
+          </div>
+        </div>
+
+        {/* Quick Payment Action Buttons */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setPaidAmount(String(calculation.totalAmount))}
+            className="text-[11px] h-7 bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 font-bold"
+          >
+            ✓ Thu đủ ({formatVND(calculation.totalAmount)}đ)
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setPaidAmount("0")}
+            className="text-[11px] h-7 bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+          >
+            Chưa thu (0đ)
+          </Button>
+
+          {calculation.totalAmount > 500000 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setPaidAmount(String(Math.round(calculation.totalAmount / 2)))}
+              className="text-[11px] h-7 bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+            >
+              Trả 50%
+            </Button>
+          )}
+        </div>
+
+        {/* Remaining Debt & Debt Forgiveness Alert */}
+        {calculation.remainingBalance > 0 && Number(paidAmount) > 0 && (
+          <div className="p-3 bg-amber-50/90 border border-amber-200 rounded-xl space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-amber-900 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                Khách còn nợ lại:
+              </span>
+              <strong className="text-amber-800 text-sm font-black">
+                {formatVND(calculation.remainingBalance)}đ
+              </strong>
+            </div>
+            <p className="text-[11px] text-amber-700 leading-tight">
+              Khách chỉ thanh toán một phần. Khoản nợ còn lại sẽ được hiển thị trên biên lai và ghi nhận công nợ trên Dashboard.
+            </p>
+            <div className="pt-1 border-t border-amber-200/70 flex items-center justify-between">
+              <span className="text-[11px] text-amber-800 font-medium">
+                Khách trả phòng / Xóa nợ xấu?
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleForgiveDebt}
+                className="text-[11px] h-7 bg-amber-600 hover:bg-amber-700 text-white font-bold px-2.5 shadow-2xs"
+              >
+                Xóa nợ / Tất toán
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Fully paid confirmation banner */}
+        {(calculation.paidAmount ?? 0) >= calculation.totalAmount && (
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between">
+            <span className="flex items-center gap-1.5 font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              {calculation.totalAmount === 0
+                ? "Đã tất toán / Cân bằng nợ về 0đ"
+                : "Đã thu đủ 100% tiền phòng"}
+            </span>
+            <span className="font-extrabold text-emerald-700">
+              {formatVND(calculation.paidAmount ?? 0)}đ
+            </span>
+          </div>
+        )}
       </Card>
 
       {/* Card 5: Invoice Note (Ghi chú hóa đơn) */}
