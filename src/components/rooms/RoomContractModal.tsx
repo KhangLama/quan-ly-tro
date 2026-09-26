@@ -17,6 +17,11 @@ import {
   Info,
 } from "lucide-react";
 import type { Room, Tenant, Setting } from "@/types";
+import {
+  parsePaymentAccounts,
+  getBankDisplayName,
+  type PaymentAccountsConfig,
+} from "@/lib/vietqr";
 
 interface RoomContractModalProps {
   room: Room;
@@ -88,9 +93,13 @@ export function RoomContractModal({
   const [waterPrice, setWaterPrice] = useState(settings?.water_price || 12000);
 
   // Bank info
+  const [paymentConfig, setPaymentConfig] = useState<PaymentAccountsConfig | null>(null);
   const [bankOwner, setBankOwner] = useState("Bùi Thanh Tùng");
   const [bankAccount, setBankAccount] = useState("");
   const [bankName, setBankName] = useState("");
+  const [serviceOwner, setServiceOwner] = useState("");
+  const [serviceAccount, setServiceAccount] = useState("");
+  const [serviceBank, setServiceBank] = useState("");
 
   // Furniture items list
   const [furnitureItems, setFurnitureItems] = useState<string[]>([]);
@@ -154,16 +163,16 @@ export function RoomContractModal({
     if (settings?.water_price) setWaterPrice(settings.water_price);
 
     if (settings?.bank_info) {
-      const parts = settings.bank_info.split("-").map((s) => s.trim());
-      if (parts.length >= 3) {
-        setBankName(parts[0]);
-        setBankAccount(parts[1]);
-        setBankOwner(parts[2]);
-      } else if (parts.length === 2) {
-        setBankName(parts[0]);
-        setBankAccount(parts[1]);
-      } else {
-        setBankAccount(settings.bank_info);
+      const parsed = parsePaymentAccounts(settings.bank_info);
+      setPaymentConfig(parsed);
+      setBankOwner(parsed.room.accountName || "Bùi Thanh Tùng");
+      setBankAccount(parsed.room.accountNumber || "");
+      setBankName(getBankDisplayName(parsed.room.bank) || parsed.room.bank || "");
+
+      if (parsed.split) {
+        setServiceOwner(parsed.service.accountName || "");
+        setServiceAccount(parsed.service.accountNumber || "");
+        setServiceBank(getBankDisplayName(parsed.service.bank) || parsed.service.bank || "");
       }
     }
 
@@ -234,17 +243,21 @@ export function RoomContractModal({
     }
 
     let iframe = document.getElementById("contract-print-iframe") as HTMLIFrameElement;
-    if (!iframe) {
-      iframe = document.createElement("iframe");
-      iframe.id = "contract-print-iframe";
-      iframe.style.position = "fixed";
-      iframe.style.right = "0";
-      iframe.style.bottom = "0";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
-      iframe.style.border = "0";
-      document.body.appendChild(iframe);
+    if (iframe) {
+      iframe.remove();
     }
+    iframe = document.createElement("iframe");
+    iframe.id = "contract-print-iframe";
+    iframe.style.position = "fixed";
+    iframe.style.top = "0";
+    iframe.style.left = "0";
+    iframe.style.width = "100%";
+    iframe.style.height = "100%";
+    iframe.style.border = "0";
+    iframe.style.opacity = "0";
+    iframe.style.pointerEvents = "none";
+    iframe.style.zIndex = "-9999";
+    document.body.appendChild(iframe);
 
     const doc = iframe.contentWindow?.document;
     if (!doc) return;
@@ -580,26 +593,70 @@ export function RoomContractModal({
           <Input value={roomAddress} onChange={(e) => setRoomAddress(e.target.value)} className="text-xs" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              Chủ tài khoản
-            </label>
-            <Input value={bankOwner} onChange={(e) => setBankOwner(e.target.value)} className="text-xs" />
+        {paymentConfig?.split ? (
+          <div className="space-y-3 pt-1">
+            <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
+              <span className="text-[11px] font-bold text-indigo-700 block uppercase tracking-wider">
+                1. Tài khoản nhận TIỀN PHÒNG
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Chủ tài khoản</label>
+                  <Input value={bankOwner} onChange={(e) => setBankOwner(e.target.value)} className="text-xs font-semibold" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Số tài khoản</label>
+                  <Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className="text-xs font-mono font-bold" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Ngân hàng</label>
+                  <Input value={bankName} onChange={(e) => setBankName(e.target.value)} className="text-xs" />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl space-y-2">
+              <span className="text-[11px] font-bold text-emerald-700 block uppercase tracking-wider">
+                2. Tài khoản nhận TIỀN ĐIỆN, NƯỚC & DỊCH VỤ
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Chủ tài khoản</label>
+                  <Input value={serviceOwner} onChange={(e) => setServiceOwner(e.target.value)} className="text-xs font-semibold" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Số tài khoản</label>
+                  <Input value={serviceAccount} onChange={(e) => setServiceAccount(e.target.value)} className="text-xs font-mono font-bold" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-600 mb-0.5">Ngân hàng</label>
+                  <Input value={serviceBank} onChange={(e) => setServiceBank(e.target.value)} className="text-xs" />
+                </div>
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              Số tài khoản
-            </label>
-            <Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className="text-xs font-mono font-bold" />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Chủ tài khoản
+              </label>
+              <Input value={bankOwner} onChange={(e) => setBankOwner(e.target.value)} className="text-xs font-semibold" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Số tài khoản
+              </label>
+              <Input value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className="text-xs font-mono font-bold" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                Ngân hàng
+              </label>
+              <Input value={bankName} onChange={(e) => setBankName(e.target.value)} className="text-xs" />
+            </div>
           </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-              Ngân hàng
-            </label>
-            <Input value={bankName} onChange={(e) => setBankName(e.target.value)} className="text-xs" />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -730,10 +787,21 @@ export function RoomContractModal({
             <p>
               - Hình thức thanh toán: Tiền mặt hoặc chuyển khoản vào thông tin sau:
             </p>
-            <div className="bank-box my-2 p-2.5 border border-black rounded">
-              <p>Họ và Tên: <strong>{bankOwner}</strong></p>
-              <p>Số tài khoản: <strong>{bankAccount || "...................................."}</strong> tại Ngân hàng <strong>{bankName || "...................................."}</strong></p>
-            </div>
+            {paymentConfig?.split ? (
+              <div className="bank-box my-2 p-2.5 border border-black rounded text-[11.5pt] space-y-1">
+                <p>
+                  • <strong>Tiền phòng:</strong> STK <strong>{bankAccount || "...................."}</strong> - Ngân hàng <strong>{bankName || "...................."}</strong> (Chủ TK: <strong>{bankOwner || "...................."}</strong>)
+                </p>
+                <p>
+                  • <strong>Tiền điện, nước, dịch vụ:</strong> STK <strong>{serviceAccount || "...................."}</strong> - Ngân hàng <strong>{serviceBank || "...................."}</strong> (Chủ TK: <strong>{serviceOwner || "...................."}</strong>)
+                </p>
+              </div>
+            ) : (
+              <div className="bank-box my-2 p-2.5 border border-black rounded">
+                <p>Họ và Tên: <strong>{bankOwner || "...................................."}</strong></p>
+                <p>Số tài khoản: <strong>{bankAccount || "...................................."}</strong> tại Ngân hàng <strong>{bankName || "...................................."}</strong></p>
+              </div>
+            )}
             <p>
               - Bên B sẽ thanh toán tiền thuê phòng cho bên A vào <strong>ngày 05 hàng tháng</strong> cùng với tiền điện và tiền nước. Nếu quá hạn trễ 3 ngày so với thời gian thanh toán và để tình trạng thanh toán trễ quá 3 lần, Bên A có quyền đơn phương chấm dứt hợp đồng và lấy lại phòng (trường hợp xấu nhất buộc phải cắt ổ khoá và không phải chịu trách nhiệm về tài sản trong phòng), Bên B không được quyền khiếu nại và mất 100% số tiền đã cọc.
             </p>
@@ -1051,7 +1119,14 @@ export function RoomContractModal({
         </div>
 
         {/* Content Area - Responsive Desktop Layout */}
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden relative">
+          {/* Always keep contractRef rendered in DOM so print and copy always work */}
+          {viewMode === "config" && (
+            <div className="hidden" aria-hidden="true">
+              {renderContractDocument()}
+            </div>
+          )}
+
           {/* Mode 1: Split View (Side-by-Side: Config on left, Live Contract on right) */}
           {viewMode === "split" && (
             <div className="flex flex-col lg:flex-row h-full gap-4 overflow-hidden">
