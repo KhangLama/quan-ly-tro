@@ -40,6 +40,10 @@ export type Expense = Database["public"]["Tables"]["expenses"]["Row"];
 export type ExpenseInsert = Database["public"]["Tables"]["expenses"]["Insert"];
 export type ExpenseUpdate = Database["public"]["Tables"]["expenses"]["Update"];
 
+export type Contract = Database["public"]["Tables"]["contracts"]["Row"];
+export type ContractInsert = Database["public"]["Tables"]["contracts"]["Insert"];
+export type ContractUpdate = Database["public"]["Tables"]["contracts"]["Update"];
+
 // Status types
 export type RoomStatus = "rented" | "empty";
 export type TenantStatus = "active" | "moved_out";

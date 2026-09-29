@@ -217,6 +217,44 @@ export interface Database {
           updated_at?: string;
         };
       };
+      contracts: {
+        Row: {
+          id: string;
+          room_id: string;
+          tenant_id: string | null;
+          tenant_name: string;
+          title: string;
+          html_content: string;
+          form_data: Record<string, any> | null;
+          status: "draft" | "signed";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          tenant_id?: string | null;
+          tenant_name?: string;
+          title?: string;
+          html_content?: string;
+          form_data?: Record<string, any> | null;
+          status?: "draft" | "signed";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          tenant_id?: string | null;
+          tenant_name?: string;
+          title?: string;
+          html_content?: string;
+          form_data?: Record<string, any> | null;
+          status?: "draft" | "signed";
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }

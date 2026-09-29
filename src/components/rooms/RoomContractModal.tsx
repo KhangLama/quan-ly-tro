@@ -15,13 +15,24 @@ import {
   Sliders,
   Columns,
   Info,
+  Save,
+  Trash2,
+  History,
+  PenLine,
+  RotateCcw,
+  ChevronDown,
 } from "lucide-react";
-import type { Room, Tenant, Setting } from "@/types";
+import type { Room, Tenant, Setting, Contract } from "@/types";
 import {
   parsePaymentAccounts,
   getBankDisplayName,
   type PaymentAccountsConfig,
 } from "@/lib/vietqr";
+import {
+  saveContract,
+  getContractsByRoom,
+  deleteContract,
+} from "@/actions/contracts";
 
 interface RoomContractModalProps {
   room: Room;
@@ -104,6 +115,15 @@ export function RoomContractModal({
   // Furniture items list
   const [furnitureItems, setFurnitureItems] = useState<string[]>([]);
 
+  // Contract persistence & inline editing
+  const [savedContracts, setSavedContracts] = useState<Contract[]>([]);
+  const [editingContractId, setEditingContractId] = useState<string | null>(null);
+  const [isEditable, setIsEditable] = useState(false);
+  const [editedHtml, setEditedHtml] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
   // Populate data when opening
   useEffect(() => {
     if (!isOpen) return;
@@ -184,7 +204,163 @@ export function RoomContractModal({
       } catch {}
     }
     setFurnitureItems(Array.isArray(fList) ? fList : []);
+
+    // Reset inline-edit state when opening fresh
+    setIsEditable(false);
+    setEditedHtml(null);
+    setEditingContractId(null);
+    setShowHistory(false);
+    setSaveMsg(null);
   }, [isOpen, room, leadTenant, settings]);
+
+  // Fetch saved contracts for this room
+  useEffect(() => {
+    if (!isOpen || !room?.id) return;
+    (async () => {
+      const { contracts } = await getContractsByRoom(room.id);
+      setSavedContracts(contracts);
+    })();
+  }, [isOpen, room?.id]);
+
+  // Collect all form state into a serializable object
+  const collectFormData = () => ({
+    contractDay, contractMonth, contractYear, innName, signatureHeight,
+    partyAName, partyACccd, partyACccdDate, partyACccdPlace, partyAAddress, partyAPhone,
+    partyBName, partyBCccd, partyBCccdDate, partyBCccdPlace, partyBAddress, partyBPhone,
+    roomAddress, roomArea, monthlyPrice, leaseMonths, leaseStartDate, leaseEndDate,
+    depositAmount, electricPrice, waterPrice,
+    bankOwner, bankAccount, bankName, serviceOwner, serviceAccount, serviceBank,
+    furnitureItems,
+  });
+
+  // Restore form state from a saved snapshot
+  const restoreFormData = (fd: Record<string, any>) => {
+    if (fd.contractDay) setContractDay(fd.contractDay);
+    if (fd.contractMonth) setContractMonth(fd.contractMonth);
+    if (fd.contractYear) setContractYear(fd.contractYear);
+    if (fd.innName !== undefined) setInnName(fd.innName);
+    if (fd.signatureHeight) setSignatureHeight(fd.signatureHeight);
+    if (fd.partyAName) setPartyAName(fd.partyAName);
+    if (fd.partyACccd !== undefined) setPartyACccd(fd.partyACccd);
+    if (fd.partyACccdDate) setPartyACccdDate(fd.partyACccdDate);
+    if (fd.partyACccdPlace) setPartyACccdPlace(fd.partyACccdPlace);
+    if (fd.partyAAddress) setPartyAAddress(fd.partyAAddress);
+    if (fd.partyAPhone) setPartyAPhone(fd.partyAPhone);
+    if (fd.partyBName !== undefined) setPartyBName(fd.partyBName);
+    if (fd.partyBCccd !== undefined) setPartyBCccd(fd.partyBCccd);
+    if (fd.partyBCccdDate) setPartyBCccdDate(fd.partyBCccdDate);
+    if (fd.partyBCccdPlace) setPartyBCccdPlace(fd.partyBCccdPlace);
+    if (fd.partyBAddress) setPartyBAddress(fd.partyBAddress);
+    if (fd.partyBPhone !== undefined) setPartyBPhone(fd.partyBPhone);
+    if (fd.roomAddress) setRoomAddress(fd.roomAddress);
+    if (fd.roomArea) setRoomArea(fd.roomArea);
+    if (fd.monthlyPrice !== undefined) setMonthlyPrice(fd.monthlyPrice);
+    if (fd.leaseMonths) setLeaseMonths(fd.leaseMonths);
+    if (fd.leaseStartDate) setLeaseStartDate(fd.leaseStartDate);
+    if (fd.leaseEndDate) setLeaseEndDate(fd.leaseEndDate);
+    if (fd.depositAmount !== undefined) setDepositAmount(fd.depositAmount);
+    if (fd.electricPrice !== undefined) setElectricPrice(fd.electricPrice);
+    if (fd.waterPrice !== undefined) setWaterPrice(fd.waterPrice);
+    if (fd.bankOwner) setBankOwner(fd.bankOwner);
+    if (fd.bankAccount !== undefined) setBankAccount(fd.bankAccount);
+    if (fd.bankName !== undefined) setBankName(fd.bankName);
+    if (fd.serviceOwner !== undefined) setServiceOwner(fd.serviceOwner);
+    if (fd.serviceAccount !== undefined) setServiceAccount(fd.serviceAccount);
+    if (fd.serviceBank !== undefined) setServiceBank(fd.serviceBank);
+    if (Array.isArray(fd.furnitureItems)) setFurnitureItems(fd.furnitureItems);
+  };
+
+  // Save current contract
+  const handleSaveContract = async () => {
+    setIsSaving(true);
+    setSaveMsg(null);
+
+    const htmlContent = isEditable && editedHtml
+      ? editedHtml
+      : contractRef.current?.innerHTML || "";
+
+    const { contract, error } = await saveContract({
+      id: editingContractId || undefined,
+      room_id: room.id,
+      tenant_id: leadTenant?.id || null,
+      tenant_name: partyBName.trim() || leadTenant?.name || "",
+      title: contractFileName,
+      html_content: htmlContent,
+      form_data: collectFormData(),
+      status: "draft",
+    });
+
+    if (error) {
+      setSaveMsg(`❌ Lỗi: ${error}`);
+    } else if (contract) {
+      setEditingContractId(contract.id);
+      setSaveMsg("✅ Đã lưu hợp đồng!");
+      // Refresh list
+      const { contracts } = await getContractsByRoom(room.id);
+      setSavedContracts(contracts);
+    }
+
+    setIsSaving(false);
+    setTimeout(() => setSaveMsg(null), 3000);
+  };
+
+  // Load a saved contract
+  const handleLoadContract = (c: Contract) => {
+    setEditingContractId(c.id);
+    setShowHistory(false);
+
+    // Restore form data if available
+    if (c.form_data) {
+      restoreFormData(c.form_data);
+    }
+
+    // If there's edited HTML, load it into editable mode
+    if (c.html_content) {
+      setEditedHtml(c.html_content);
+      setIsEditable(true);
+    } else {
+      setIsEditable(false);
+      setEditedHtml(null);
+    }
+  };
+
+  // Delete a saved contract
+  const handleDeleteContract = async (id: string) => {
+    if (!confirm("Xoá hợp đồng này? Thao tác không thể hoàn tác.")) return;
+    await deleteContract(id);
+    if (editingContractId === id) {
+      setEditingContractId(null);
+      setEditedHtml(null);
+      setIsEditable(false);
+    }
+    const { contracts } = await getContractsByRoom(room.id);
+    setSavedContracts(contracts);
+  };
+
+  // Toggle contentEditable on preview
+  const handleToggleEditable = () => {
+    if (isEditable) {
+      // Turning off: capture current HTML
+      if (contractRef.current) {
+        setEditedHtml(contractRef.current.innerHTML);
+      }
+      setIsEditable(false);
+    } else {
+      // Turning on: snapshot current rendered HTML if not already captured
+      if (!editedHtml && contractRef.current) {
+        setEditedHtml(contractRef.current.innerHTML);
+      }
+      setIsEditable(true);
+      // Switch to preview mode so the editable area is visible
+      if (viewMode === "config") setViewMode("preview");
+    }
+  };
+
+  // Reset back to form-generated content (discard inline edits)
+  const handleResetToForm = () => {
+    setEditedHtml(null);
+    setIsEditable(false);
+  };
 
   const handleSavePartyADefaults = () => {
     if (typeof window !== "undefined") {
@@ -661,9 +837,98 @@ export function RoomContractModal({
     </div>
   );
 
+  // Banner showing edit status and guidance
+  const renderPreviewBanner = () => (
+    <>
+      {isEditable && (
+        <div className="flex items-center justify-between p-3 bg-amber-50 border-2 border-amber-300 rounded-xl text-amber-900 text-xs mb-4 shadow-xs animate-fade-in max-w-[760px] mx-auto">
+          <div className="flex items-center gap-2">
+            <PenLine className="w-4 h-4 text-amber-600 shrink-0" />
+            <div>
+              <p className="font-bold">Chế độ Chỉnh sửa trực tiếp đang BẬT</p>
+              <p className="text-[11px] text-amber-800">
+                Click chuột vào bất kỳ chỗ nào trên trang hợp đồng bên dưới để sửa đổi hoặc gõ thêm nội dung. Xong bấm <strong>Lưu hợp đồng</strong> hoặc <strong>In PDF</strong>.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleEditable}
+            className="text-xs font-bold bg-amber-200 hover:bg-amber-300 text-amber-900 px-3 py-1.5 rounded-lg shrink-0 ml-3 transition-colors"
+          >
+            Khóa lại
+          </button>
+        </div>
+      )}
+
+      {!isEditable && editedHtml !== null && (
+        <div className="flex items-center justify-between p-2.5 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-900 text-xs mb-4 max-w-[760px] mx-auto">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>
+              Đang hiển thị <strong>bản chỉnh sửa trực tiếp</strong>.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetToForm}
+            className="text-[11px] font-bold text-indigo-700 hover:underline shrink-0 ml-2"
+          >
+            Khôi phục từ form
+          </button>
+        </div>
+      )}
+
+      {!isEditable && editedHtml === null && (
+        <div className="flex items-center gap-2 p-2 bg-amber-50/90 border border-amber-200/90 rounded-xl text-amber-900 text-xs mb-4 max-w-[760px] mx-auto">
+          <Info className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>
+            Bản xem trước trực tiếp tương ứng 100% với file PDF và bản in thực tế. Chỉnh sửa bên trái sẽ cập nhật ngay tại đây.
+          </span>
+        </div>
+      )}
+    </>
+  );
+
   // Reusable 3-Page Contract Document Component
-  const renderContractDocument = () => (
-    <div ref={contractRef} className="space-y-6">
+  const renderContractDocument = () => {
+    if (editedHtml !== null) {
+      return (
+        <div
+          ref={contractRef}
+          contentEditable={isEditable}
+          suppressContentEditableWarning
+          onBlur={() => {
+            if (contractRef.current) {
+              setEditedHtml(contractRef.current.innerHTML);
+            }
+          }}
+          dangerouslySetInnerHTML={{ __html: editedHtml }}
+          className={`space-y-6 transition-all ${
+            isEditable
+              ? "ring-4 ring-amber-400/60 rounded-2xl cursor-text select-text p-1 bg-amber-50/10"
+              : ""
+          }`}
+        />
+      );
+    }
+
+    return (
+      <div
+        ref={contractRef}
+        contentEditable={isEditable}
+        suppressContentEditableWarning
+        onBlur={() => {
+          if (isEditable && contractRef.current) {
+            setEditedHtml(contractRef.current.innerHTML);
+          }
+        }}
+        className={`space-y-6 transition-all ${
+          isEditable
+            ? "ring-4 ring-amber-400/60 rounded-2xl cursor-text select-text p-1 bg-amber-50/10"
+            : ""
+        }`}
+      >
       {/* TRANG 1 */}
       <div
         className="page-container max-w-[760px] mx-auto bg-white p-8 sm:p-12 shadow-md rounded-xl text-slate-900 leading-relaxed text-[13pt]"
@@ -913,6 +1178,7 @@ export function RoomContractModal({
       </div>
     </div>
   );
+};
 
   return (
     <Modal
@@ -1000,12 +1266,144 @@ export function RoomContractModal({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-              <span className="font-semibold text-slate-600">Tên file khi lưu:</span>
-              <span className="font-bold text-indigo-900 font-mono text-[11px] max-w-[260px] truncate" title={`${contractFileName}.pdf`}>
-                {contractFileName}.pdf
+            {/* Save Status / Feedback Toast */}
+            {saveMsg && (
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-1.5 rounded-xl animate-fade-in">
+                {saveMsg}
               </span>
+            )}
+
+            {/* Saved Contracts History Dropdown */}
+            <div className="relative">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowHistory(!showHistory)}
+                className={`text-xs font-bold gap-1.5 h-9 bg-white ${
+                  editingContractId ? "border-indigo-400 text-indigo-700" : ""
+                }`}
+                title="Xem danh sách hợp đồng đã lưu của phòng này"
+              >
+                <History className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Lịch sử ({savedContracts.length})</span>
+                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${showHistory ? "rotate-180" : ""}`} />
+              </Button>
+
+              {showHistory && (
+                <div className="absolute right-0 mt-1.5 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-2.5 max-h-80 overflow-y-auto">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 px-1 mb-1">
+                    <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                      Hợp đồng đã lưu ({savedContracts.length})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowHistory(false)}
+                      className="text-slate-400 hover:text-slate-600 text-xs"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {savedContracts.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                      Chưa có hợp đồng nào được lưu cho phòng này
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {savedContracts.map((c) => {
+                        const isCurrent = editingContractId === c.id;
+                        return (
+                          <div
+                            key={c.id}
+                            className={`p-2 rounded-xl flex items-center justify-between gap-2 text-xs transition-colors ${
+                              isCurrent
+                                ? "bg-indigo-50 border border-indigo-200"
+                                : "hover:bg-slate-50 border border-transparent"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleLoadContract(c)}
+                              className="text-left flex-1 min-w-0"
+                            >
+                              <div className="font-bold text-slate-800 truncate flex items-center gap-1.5">
+                                <span className="truncate">{c.tenant_name || "Khách thuê"}</span>
+                                {isCurrent && (
+                                  <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold shrink-0">
+                                    Đang mở
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-slate-400 mt-0.5">
+                                {new Date(c.updated_at || c.created_at).toLocaleDateString("vi-VN", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteContract(c.id);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0"
+                              title="Xoá hợp đồng này"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* ContentEditable Toggle */}
+            <Button
+              type="button"
+              variant={isEditable ? "primary" : "outline"}
+              onClick={handleToggleEditable}
+              className={`text-xs font-bold gap-1.5 h-9 ${
+                isEditable
+                  ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs"
+                  : "text-amber-800 border-amber-300 hover:bg-amber-50"
+              }`}
+              title="Click trực tiếp vào trang hợp đồng để chỉnh sửa từng chữ tùy ý"
+            >
+              <PenLine className="w-3.5 h-3.5" />
+              <span>{isEditable ? "Khóa chỉnh sửa" : "Chỉnh trực tiếp"}</span>
+            </Button>
+
+            {/* Reset to Form if inline edited */}
+            {editedHtml !== null && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetToForm}
+                className="text-xs font-bold gap-1 h-9 text-slate-600 hover:text-slate-800"
+                title="Khôi phục lại nội dung chuẩn từ form cấu hình"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Khôi phục gốc</span>
+              </Button>
+            )}
+
+            {/* Save Contract Button */}
+            <Button
+              type="button"
+              onClick={handleSaveContract}
+              disabled={isSaving}
+              className="text-xs font-bold gap-1.5 h-9 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+              title="Lưu bản hợp đồng này vào hệ thống để dùng lại"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{isSaving ? "Đang lưu..." : editingContractId ? "Cập nhật HĐ" : "Lưu hợp đồng"}</span>
+            </Button>
 
             <Button
               type="button"
@@ -1021,7 +1419,7 @@ export function RoomContractModal({
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5" />
-                  <span>Sao chép văn bản</span>
+                  <span>Sao chép</span>
                 </>
               )}
             </Button>
@@ -1144,12 +1542,7 @@ export function RoomContractModal({
 
               {/* Right Column: Live Document Preview */}
               <div className="flex-1 min-w-0 h-full overflow-y-auto p-4 bg-slate-200/90 border border-slate-300 rounded-2xl">
-                <div className="flex items-center gap-2 p-2 bg-amber-50/90 border border-amber-200/90 rounded-xl text-amber-900 text-xs mb-4">
-                  <Info className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>
-                    Bản xem trước trực tiếp tương ứng 100% với file PDF và bản in thực tế. Chỉnh sửa bên trái sẽ cập nhật ngay tại đây.
-                  </span>
-                </div>
+                {renderPreviewBanner()}
                 {renderContractDocument()}
               </div>
             </div>
@@ -1158,12 +1551,7 @@ export function RoomContractModal({
           {/* Mode 2: Full Preview Only */}
           {viewMode === "preview" && (
             <div className="h-full overflow-y-auto p-4 bg-slate-200/90 border border-slate-300 rounded-2xl">
-              <div className="flex items-center gap-2 p-2 bg-amber-50/90 border border-amber-200/90 rounded-xl text-amber-900 text-xs mb-4 max-w-[760px] mx-auto">
-                <Info className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>
-                  Bản xem trước A4 trọn vẹn 3 trang. Bấm <strong>In hợp đồng (PDF)</strong> để in hoặc lưu file PDF.
-                </span>
-              </div>
+              {renderPreviewBanner()}
               {renderContractDocument()}
             </div>
           )}

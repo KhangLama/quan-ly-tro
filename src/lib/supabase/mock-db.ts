@@ -1,10 +1,11 @@
-import type { Setting, Room, Tenant, Invoice } from "../../types/index.ts";
+import type { Setting, Room, Tenant, Invoice, Contract } from "../../types/index.ts";
 
 export interface MockDatabaseState {
   settings: Setting[];
   rooms: Room[];
   tenants: Tenant[];
   invoices: Invoice[];
+  contracts: Contract[];
 }
 
 const DEFAULT_SETTINGS: Setting = {
@@ -91,6 +92,7 @@ class MockDatabase {
     rooms: [...INITIAL_ROOMS],
     tenants: [...INITIAL_TENANTS],
     invoices: [],
+    contracts: [],
   };
 
   constructor() {
@@ -133,6 +135,7 @@ class MockDatabase {
       rooms: initialState?.rooms ? [...initialState.rooms] : [],
       tenants: initialState?.tenants ? [...initialState.tenants] : [],
       invoices: initialState?.invoices ? [...initialState.invoices] : [],
+      contracts: initialState?.contracts ? [...initialState.contracts] : [],
     };
   }
 
