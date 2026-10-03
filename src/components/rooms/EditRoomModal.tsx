@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/Input";
 import { updateRoom } from "@/actions/rooms";
 import { getSettings } from "@/actions/settings";
 import { DEFAULT_FURNITURE_CATALOG } from "@/lib/constants/furniture";
-import { Edit2, Check, Building2, Armchair, StickyNote } from "lucide-react";
-import type { Room } from "@/types";
+import { Edit2, Check, Building2, Armchair, StickyNote, Layers, Trash2, Plus } from "lucide-react";
+import type { Room, CustomFeeItem } from "@/types";
+import { formatVND } from "@/lib/utils";
 
 interface EditRoomModalProps {
   room: Room | null;
@@ -27,6 +28,7 @@ export function EditRoomModal({
   const [basePrice, setBasePrice] = useState("");
   const [catalog, setCatalog] = useState<string[]>(DEFAULT_FURNITURE_CATALOG);
   const [selectedFurniture, setSelectedFurniture] = useState<string[]>([]);
+  const [customFees, setCustomFees] = useState<CustomFeeItem[]>([]);
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +69,16 @@ export function EditRoomModal({
       }
       setSelectedFurniture(Array.isArray(initialFurn) ? initialFurn : []);
 
+      // Load room custom fees
+      let initialFees = (room as any)?.custom_fees;
+      if (!initialFees && typeof window !== "undefined") {
+        try {
+          const cachedFees = localStorage.getItem("room_custom_fees_" + room.id);
+          if (cachedFees) initialFees = JSON.parse(cachedFees);
+        } catch {}
+      }
+      setCustomFees(Array.isArray(initialFees) ? initialFees : []);
+
       // Load room note
       let initialNote = (room as any)?.note || "";
       if (!initialNote && typeof window !== "undefined") {
@@ -90,6 +102,30 @@ export function EditRoomModal({
   const selectAll = () => setSelectedFurniture([...catalog]);
   const clearAll = () => setSelectedFurniture([]);
 
+  const handleAddFee = (name = "", unitPrice = 0, quantity = 1) => {
+    setCustomFees((prev) => [
+      ...prev,
+      {
+        id: `fee-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name,
+        unitPrice,
+        quantity,
+      },
+    ]);
+  };
+
+  const handleUpdateFee = (index: number, field: keyof CustomFeeItem, value: any) => {
+    setCustomFees((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleRemoveFee = (index: number) => {
+    setCustomFees((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) {
@@ -109,6 +145,7 @@ export function EditRoomModal({
       base_price: Number(basePrice),
       furniture: selectedFurniture,
       note: note.trim(),
+      custom_fees: customFees,
     });
 
     if (typeof window !== "undefined") {
@@ -118,6 +155,7 @@ export function EditRoomModal({
           JSON.stringify(selectedFurniture)
         );
         localStorage.setItem("room_note_" + room.id, note.trim());
+        localStorage.setItem("room_custom_fees_" + room.id, JSON.stringify(customFees));
       } catch {}
     }
 
@@ -238,6 +276,79 @@ export function EditRoomModal({
               );
             })}
           </div>
+        </div>
+
+        {/* Default Custom Other Fees for this room */}
+        <div className="space-y-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Chi phí khác mặc định (Mục số 4)</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => handleAddFee("", 0, 1)}
+              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Thêm phí</span>
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Các khoản phí này sẽ tự động được điền khi tính hoá đơn hàng tháng cho phòng này:
+          </p>
+
+          {customFees.length === 0 ? (
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-400">
+              Chưa có chi phí khác mặc định cho phòng này.
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+              {customFees.map((fee, idx) => (
+                <div
+                  key={fee.id || idx}
+                  className="p-2 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center gap-2"
+                >
+                  <div className="flex-1">
+                    <Input
+                      value={fee.name}
+                      onChange={(e) => handleUpdateFee(idx, "name", e.target.value)}
+                      placeholder="Tên phí (ví dụ: Rác, Wifi, Xe...)"
+                      className="text-xs h-7"
+                    />
+                  </div>
+                  <div className="w-24">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={fee.unitPrice || ""}
+                      onChange={(e) => handleUpdateFee(idx, "unitPrice", Number(e.target.value) || 0)}
+                      placeholder="Đơn giá"
+                      className="text-xs font-mono font-bold h-7"
+                    />
+                  </div>
+                  <div className="w-14">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={fee.quantity || ""}
+                      onChange={(e) => handleUpdateFee(idx, "quantity", Math.max(1, Number(e.target.value) || 1))}
+                      placeholder="SL"
+                      className="text-xs font-mono font-bold text-center h-7"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveFee(idx)}
+                    className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                    title="Xóa"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Room Note */}

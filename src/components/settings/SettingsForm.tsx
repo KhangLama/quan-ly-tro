@@ -19,8 +19,6 @@ import type { Setting } from "@/types";
 export function SettingsForm() {
   const [electricPrice, setElectricPrice] = useState("3500");
   const [waterPrice, setWaterPrice] = useState("25000");
-  const [enableService, setEnableService] = useState(false);
-  const [servicePrice, setServicePrice] = useState("0");
   const [bankInfo, setBankInfo] = useState("MB Bank - 0987654321 - NGUYEN VAN A");
   const [paymentConfig, setPaymentConfig] = useState<PaymentAccountsConfig>({
     split: false,
@@ -28,7 +26,6 @@ export function SettingsForm() {
     service: { bank: "MB", accountNumber: "0987654321", accountName: "NGUYEN VAN A" },
   });
   const [address, setAddress] = useState("325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ");
-  const [serviceDescription, setServiceDescription] = useState("");
   const [receiptNote, setReceiptNote] = useState("");
 
   // Furniture Catalog
@@ -46,17 +43,11 @@ export function SettingsForm() {
     if (res.settings) {
       if (res.settings.electric_price !== undefined) setElectricPrice(String(res.settings.electric_price));
       if (res.settings.water_price !== undefined) setWaterPrice(String(res.settings.water_price));
-      if (res.settings.service_price !== undefined) {
-        const sPrice = Number(res.settings.service_price) || 0;
-        setServicePrice(String(sPrice));
-        setEnableService(sPrice > 0);
-      }
       if (res.settings.bank_info !== undefined) {
         setBankInfo(res.settings.bank_info || "");
         setPaymentConfig(parsePaymentAccounts(res.settings.bank_info));
       }
       if (res.settings.address !== undefined) setAddress(res.settings.address || "");
-      if (res.settings.service_description !== undefined) setServiceDescription(res.settings.service_description || "");
       if (res.settings.receipt_note !== undefined) setReceiptNote(res.settings.receipt_note || "");
 
       let catalog = (res.settings as any)?.furniture_catalog;
@@ -100,19 +91,14 @@ export function SettingsForm() {
     setErrorMsg(null);
     setSaveSuccess(false);
 
-    const finalServicePrice = enableService ? (Number(servicePrice) || 0) : 0;
-    const finalServiceDesc = enableService ? serviceDescription.trim() : "";
-
     const serializedBank = serializePaymentAccounts(paymentConfig);
     setBankInfo(serializedBank);
 
     const res = await updateSettings({
       electric_price: Number(electricPrice) || 0,
       water_price: Number(waterPrice) || 0,
-      service_price: finalServicePrice,
       bank_info: serializedBank,
       address,
-      service_description: finalServiceDesc,
       receipt_note: receiptNote,
       furniture_catalog: furnitureCatalog,
     });
@@ -137,11 +123,8 @@ export function SettingsForm() {
   const handleResetDefaults = () => {
     setElectricPrice("3500");
     setWaterPrice("25000");
-    setEnableService(false);
-    setServicePrice("0");
     setBankInfo("MB Bank - 0987654321 - NGUYEN VAN A");
     setAddress("325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ");
-    setServiceDescription("");
     setReceiptNote("");
     setFurnitureCatalog(DEFAULT_FURNITURE_CATALOG);
   };
@@ -177,121 +160,70 @@ export function SettingsForm() {
           {/* Utility Rates Card */}
           <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3.5">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-          Đơn giá điện, nước & dịch vụ
-        </h3>
+              Đơn giá điện & nước
+            </h3>
 
-        {/* Electric Rate */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 text-amber-500" />
-            <span>Đơn giá điện (VNĐ / số - kWh)</span>
-          </label>
-          <div className="relative">
-            <Input
-              type="number"
-              value={electricPrice}
-              onChange={(e) => setElectricPrice(e.target.value)}
-              min="0"
-              required
-              className="font-bold text-sm"
-            />
-            <span className="absolute right-3 top-2.5 text-xs text-slate-400">
-              đ/kWh
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Đang áp dụng: <strong>{formatVND(Number(electricPrice) || 0)}đ</strong>/kWh
-          </p>
-        </div>
-
-        {/* Water Rate */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-            <Droplet className="w-3.5 h-3.5 text-sky-500" />
-            <span>Đơn giá nước (VNĐ / khối - m³)</span>
-          </label>
-          <div className="relative">
-            <Input
-              type="number"
-              value={waterPrice}
-              onChange={(e) => setWaterPrice(e.target.value)}
-              min="0"
-              required
-              className="font-bold text-sm"
-            />
-            <span className="absolute right-3 top-2.5 text-xs text-slate-400">
-              đ/m³
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-1">
-            Đang áp dụng: <strong>{formatVND(Number(waterPrice) || 0)}đ</strong>/m³
-          </p>
-        </div>
-
-        {/* Service Rate Section with Toggle */}
-        <div className="pt-2 border-t border-slate-100 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer">
-              <Shield className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Thu phí dịch vụ / Chi phí khác (Mục số 4)</span>
-            </label>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={enableService}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setEnableService(checked);
-                  if (checked && (servicePrice === "0" || !servicePrice)) {
-                    setServicePrice("100000");
-                    if (!serviceDescription) setServiceDescription("Dịch vụ chung (Rác, Wifi, ...)");
-                  }
-                }}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
-            </label>
-          </div>
-
-          {enableService ? (
-            <div className="space-y-3 pl-2 border-l-2 border-emerald-500/40 mt-2">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Đơn giá dịch vụ (VNĐ / phòng / tháng)
-                </label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    value={servicePrice}
-                    onChange={(e) => setServicePrice(e.target.value)}
-                    min="0"
-                    required
-                    className="font-bold text-sm"
-                  />
-                  <span className="absolute right-3 top-2.5 text-xs text-slate-400">
-                    đ/tháng
-                  </span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                  Mô tả khoản chi phí khác trên biên lai (Mục số 4)
-                </label>
+            {/* Electric Rate */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-500" />
+                <span>Đơn giá điện (VNĐ / số - kWh)</span>
+              </label>
+              <div className="relative">
                 <Input
-                  value={serviceDescription}
-                  onChange={(e) => setServiceDescription(e.target.value)}
-                  placeholder="e.g. Dịch vụ chung (Rác, Wifi, ...)"
-                  className="text-xs font-medium"
+                  type="number"
+                  value={electricPrice}
+                  onChange={(e) => setElectricPrice(e.target.value)}
+                  min="0"
+                  required
+                  className="font-bold text-sm"
                 />
+                <span className="absolute right-3 top-2.5 text-xs text-slate-400">
+                  đ/kWh
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Đang áp dụng: <strong>{formatVND(Number(electricPrice) || 0)}đ</strong>/kWh
+              </p>
+            </div>
+
+            {/* Water Rate */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                <Droplet className="w-3.5 h-3.5 text-sky-500" />
+                <span>Đơn giá nước (VNĐ / khối - m³)</span>
+              </label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={waterPrice}
+                  onChange={(e) => setWaterPrice(e.target.value)}
+                  min="0"
+                  required
+                  className="font-bold text-sm"
+                />
+                <span className="absolute right-3 top-2.5 text-xs text-slate-400">
+                  đ/m³
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Đang áp dụng: <strong>{formatVND(Number(waterPrice) || 0)}đ</strong>/m³
+              </p>
+            </div>
+
+            {/* Note on Custom Other Fees */}
+            <div className="pt-2 border-t border-slate-100">
+              <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl text-xs space-y-1">
+                <div className="font-bold text-indigo-900 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Chi phí khác (Mục số 4)</span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Các khoản chi phí khác (như tiền rác, wifi, giữ xe, vệ sinh...) hiện được cài đặt riêng cho từng phòng theo đơn giá và số lượng khi tính hoá đơn hoặc trong thông tin chi tiết từng phòng.
+                </p>
               </div>
             </div>
-          ) : (
-            <p className="text-[11px] text-slate-400 italic">
-              Đang tắt (0đ) — trên biên lai sẽ set về 0đ và bỏ trống mô tả.
-            </p>
-          )}
-        </div>
-      </Card>
+          </Card>
 
       {/* Bank Accounts & VietQR Card */}
       <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-4">

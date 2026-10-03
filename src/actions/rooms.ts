@@ -155,7 +155,7 @@ export async function createRoom(data: { code: string; base_price: number }): Pr
  */
 export async function updateRoom(
   id: string,
-  data: Partial<RoomUpdate> & { furniture?: string[]; note?: string }
+  data: Partial<RoomUpdate> & { furniture?: string[]; note?: string; custom_fees?: import("../types/index.ts").CustomFeeItem[] }
 ): Promise<{ room?: Room; error?: string }> {
   try {
     const supabase = await createClient();
@@ -166,15 +166,16 @@ export async function updateRoom(
       .select()
       .single();
 
-    // If Supabase table is missing optional furniture or note column (PGRST204), fallback gracefully
+    // If Supabase table is missing optional furniture, note or custom_fees column (PGRST204), fallback gracefully
     if (
       error &&
       (error.code === "PGRST204" ||
         error.message?.includes("furniture") ||
         error.message?.includes("note") ||
+        error.message?.includes("custom_fees") ||
         error.message?.includes("Could not find"))
     ) {
-      const { furniture: _f, note: _n, ...corePayload } = data;
+      const { furniture: _f, note: _n, custom_fees: _cf, ...corePayload } = data;
       const retry = await supabase
         .from("rooms")
         .update(corePayload)
@@ -187,6 +188,7 @@ export async function updateRoom(
           ...retry.data,
           furniture: data.furniture || [],
           note: data.note || "",
+          custom_fees: data.custom_fees || [],
         };
         error = null;
       }

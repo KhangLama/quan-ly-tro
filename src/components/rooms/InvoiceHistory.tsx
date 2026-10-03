@@ -95,6 +95,14 @@ export function InvoiceHistory({
       } catch {}
     }
 
+    let customFees: any = (inv as any).custom_fees;
+    if (!customFees && typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`inv_custom_fees_${inv.room_id}_${inv.month}`);
+        if (cached) customFees = JSON.parse(cached);
+      } catch {}
+    }
+
     setSelectedReceipt({
       roomCode,
       month: inv.month,
@@ -114,6 +122,7 @@ export function InvoiceHistory({
       waterUsage,
       basePrice,
       servicePrice,
+      customFees,
       discount,
       discountReason,
       totalAmount,

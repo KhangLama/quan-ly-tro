@@ -9,17 +9,27 @@ export type SettingUpdate = Database["public"]["Tables"]["settings"]["Update"] &
   furniture_catalog?: string[];
 };
 
+export interface CustomFeeItem {
+  id?: string;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+}
+
 export type Room = Database["public"]["Tables"]["rooms"]["Row"] & {
   furniture?: string[];
   note?: string;
+  custom_fees?: CustomFeeItem[];
 };
 export type RoomInsert = Database["public"]["Tables"]["rooms"]["Insert"] & {
   furniture?: string[];
   note?: string;
+  custom_fees?: CustomFeeItem[];
 };
 export type RoomUpdate = Database["public"]["Tables"]["rooms"]["Update"] & {
   furniture?: string[];
   note?: string;
+  custom_fees?: CustomFeeItem[];
 };
 
 export type Tenant = Database["public"]["Tables"]["tenants"]["Row"] & {
@@ -32,9 +42,15 @@ export type TenantUpdate = Database["public"]["Tables"]["tenants"]["Update"] & {
   deposit_only?: boolean;
 };
 
-export type Invoice = Database["public"]["Tables"]["invoices"]["Row"];
-export type InvoiceInsert = Database["public"]["Tables"]["invoices"]["Insert"];
-export type InvoiceUpdate = Database["public"]["Tables"]["invoices"]["Update"];
+export type Invoice = Database["public"]["Tables"]["invoices"]["Row"] & {
+  custom_fees?: CustomFeeItem[];
+};
+export type InvoiceInsert = Database["public"]["Tables"]["invoices"]["Insert"] & {
+  custom_fees?: CustomFeeItem[];
+};
+export type InvoiceUpdate = Database["public"]["Tables"]["invoices"]["Update"] & {
+  custom_fees?: CustomFeeItem[];
+};
 
 export type Expense = Database["public"]["Tables"]["expenses"]["Row"];
 export type ExpenseInsert = Database["public"]["Tables"]["expenses"]["Insert"];
@@ -65,7 +81,8 @@ export interface CalculationInput {
   newWater: number;
   electricPrice: number;
   waterPrice: number;
-  servicePrice: number;
+  servicePrice?: number;
+  customFees?: CustomFeeItem[];
   discount?: number;
   isProrated?: boolean;
   stayDays?: number;
@@ -79,6 +96,7 @@ export interface CalculationResult {
   electricCost: number;
   waterCost: number;
   servicePrice: number;
+  customFees?: CustomFeeItem[];
   basePrice: number;
   originalBasePrice?: number;
   discount: number;

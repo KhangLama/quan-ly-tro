@@ -59,6 +59,13 @@ export interface InvoiceRecord {
   created_at: string;
 }
 
+export interface CustomFeeItem {
+  id?: string;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+}
+
 export interface CalculationInput {
   basePrice: number;
   oldElectric: number;
@@ -67,7 +74,8 @@ export interface CalculationInput {
   newWater: number;
   electricPrice: number;
   waterPrice: number;
-  servicePrice: number;
+  servicePrice?: number;
+  customFees?: CustomFeeItem[];
   discount?: number;
   isProrated?: boolean;
   stayDays?: number;
@@ -81,6 +89,7 @@ export interface CalculationResult {
   electricCost: number;
   waterCost: number;
   servicePrice: number;
+  customFees?: CustomFeeItem[];
   basePrice: number;
   originalBasePrice?: number;
   discount?: number;
@@ -569,7 +578,14 @@ export function calculateInvoice(input: CalculationInput): CalculationResult {
   const waterUsage = Math.max(0, input.newWater - input.oldWater);
   const electricCost = Math.round(electricUsage * input.electricPrice);
   const waterCost = Math.round(waterUsage * input.waterPrice);
-  const servicePrice = Math.round(input.servicePrice || 0);
+  const customFeesTotal = (input.customFees || []).reduce(
+    (sum, item) => sum + Math.round((Number(item.unitPrice) || 0) * (Number(item.quantity) || 0)),
+    0
+  );
+  const servicePrice =
+    input.customFees && input.customFees.length > 0
+      ? customFeesTotal
+      : Math.round(input.servicePrice || 0);
 
   const isProrated = Boolean(
     input.isProrated &&
@@ -601,6 +617,7 @@ export function calculateInvoice(input: CalculationInput): CalculationResult {
     electricCost,
     waterCost,
     servicePrice,
+    customFees: input.customFees,
     basePrice: effectiveBasePrice,
     originalBasePrice: isProrated ? Math.round(input.basePrice || 0) : undefined,
     isProrated,

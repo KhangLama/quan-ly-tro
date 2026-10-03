@@ -7,6 +7,8 @@ import {
   type PaymentAccountsConfig,
 } from "@/lib/vietqr";
 
+import type { CustomFeeItem } from "@/types";
+
 export interface ReceiptData {
   roomCode: string;
   month: string; // e.g. "2026-08"
@@ -29,6 +31,7 @@ export interface ReceiptData {
   waterUsage: number;
   basePrice: number;
   servicePrice: number;
+  customFees?: CustomFeeItem[];
   discount?: number;
   discountReason?: string;
   totalAmount: number;
@@ -253,21 +256,48 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
             </tr>
 
             {/* 4. Service / Other Expenses */}
-            <tr>
-              <td className="border-r border-black p-1.5 font-medium">4- Chi phí khác</td>
-              <td className="border-r border-black p-1.5 text-[11px] text-slate-600">
-                {data.servicePrice > 0 ? (data.serviceDescription || "") : ""}
-              </td>
-              <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">
-                {formatVND(data.servicePrice || 0)} đ
-              </td>
-              <td className="border-r border-black p-1.5 text-center">
-                {data.servicePrice > 0 ? 1 : 0}
-              </td>
-              <td className="p-1.5 text-right font-bold pr-2 whitespace-nowrap">
-                {formatVND(data.servicePrice || 0)} đ
-              </td>
-            </tr>
+            {data.customFees && data.customFees.length > 0 ? (
+              data.customFees.map((fee, idx) => (
+                <tr key={fee.id || idx}>
+                  {idx === 0 && (
+                    <td
+                      rowSpan={data.customFees!.length}
+                      className="border-r border-black p-1.5 font-medium align-middle"
+                    >
+                      4- Chi phí khác
+                    </td>
+                  )}
+                  <td className="border-r border-black p-1.5 text-[11px] text-slate-800 leading-normal">
+                    {fee.name || "Chi phí khác"}
+                  </td>
+                  <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">
+                    {formatVND(fee.unitPrice || 0)} đ
+                  </td>
+                  <td className="border-r border-black p-1.5 text-center font-bold">
+                    {fee.quantity || 1}
+                  </td>
+                  <td className="p-1.5 text-right font-bold pr-2 whitespace-nowrap">
+                    {formatVND((fee.unitPrice || 0) * (fee.quantity || 1))} đ
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="border-r border-black p-1.5 font-medium">4- Chi phí khác</td>
+                <td className="border-r border-black p-1.5 text-[11px] text-slate-600">
+                  {data.servicePrice > 0 ? (data.serviceDescription || "") : ""}
+                </td>
+                <td className="border-r border-black p-1.5 text-right font-medium whitespace-nowrap">
+                  {formatVND(data.servicePrice || 0)} đ
+                </td>
+                <td className="border-r border-black p-1.5 text-center">
+                  {data.servicePrice > 0 ? 1 : 0}
+                </td>
+                <td className="p-1.5 text-right font-bold pr-2 whitespace-nowrap">
+                  {formatVND(data.servicePrice || 0)} đ
+                </td>
+              </tr>
+            )}
 
             {/* 5. Discount if any */}
             {data.discount !== undefined && data.discount > 0 && (

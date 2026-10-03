@@ -134,7 +134,8 @@ export async function saveInvoice(data: {
   base_price: number;
   electric_price: number;
   water_price: number;
-  service_price: number;
+  service_price?: number;
+  custom_fees?: import("../types/index.ts").CustomFeeItem[];
   discount?: number;
   discount_reason?: string;
   note?: string;
@@ -158,6 +159,7 @@ export async function saveInvoice(data: {
       electricPrice: Number(data.electric_price) || 0,
       waterPrice: Number(data.water_price) || 0,
       servicePrice: Number(data.service_price) || 0,
+      customFees: data.custom_fees,
       discount: Number(data.discount) || 0,
       isProrated: data.is_prorated,
       stayDays: data.stay_days,
@@ -201,6 +203,7 @@ export async function saveInvoice(data: {
       electric_price: Number(data.electric_price) || 0,
       water_price: Number(data.water_price) || 0,
       service_price: calculation.servicePrice,
+      custom_fees: data.custom_fees || [],
       discount: calculation.discount,
       discount_reason: data.discount_reason || "",
       note: data.note || "",
@@ -221,8 +224,8 @@ export async function saveInvoice(data: {
 
       // If schema missing optional columns (PGRST204), gracefully fallback
       if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
-        // Step 1: Try dropping paid_amount and note
-        const { paid_amount: _, note: __, ...withoutPaidAndNote } = basePayload;
+        // Step 1: Try dropping paid_amount, note, and custom_fees
+        const { paid_amount: _, note: __, custom_fees: ___, ...withoutPaidAndNote } = basePayload;
         let retry = await supabase
           .from("invoices")
           .update(withoutPaidAndNote)
@@ -232,7 +235,7 @@ export async function saveInvoice(data: {
 
         // Step 2: If still failing, drop discount as well
         if (retry.error && (retry.error.code === "PGRST204" || retry.error.message?.includes("column"))) {
-          const { discount: ___, discount_reason: ____, ...legacyPayload } = withoutPaidAndNote;
+          const { discount: ____, discount_reason: _____, ...legacyPayload } = withoutPaidAndNote;
           retry = await supabase
             .from("invoices")
             .update(legacyPayload)
@@ -249,6 +252,7 @@ export async function saveInvoice(data: {
       savedInvoice = updated
         ? {
             ...updated,
+            custom_fees: data.custom_fees || (updated as any)?.custom_fees || [],
             discount: calculation.discount,
             discount_reason: data.discount_reason,
             note: data.note,
@@ -271,7 +275,7 @@ export async function saveInvoice(data: {
 
       // If schema missing optional columns (PGRST204), gracefully fallback
       if (error && (error.code === "PGRST204" || error.message?.includes("column"))) {
-        const { paid_amount: _, note: __, ...withoutPaidAndNote } = insertPayload;
+        const { paid_amount: _, note: __, custom_fees: ___, ...withoutPaidAndNote } = insertPayload;
         let retry = await supabase
           .from("invoices")
           .insert(withoutPaidAndNote)
@@ -279,7 +283,7 @@ export async function saveInvoice(data: {
           .single();
 
         if (retry.error && (retry.error.code === "PGRST204" || retry.error.message?.includes("column"))) {
-          const { discount: ___, discount_reason: ____, ...legacyPayload } = withoutPaidAndNote;
+          const { discount: ____, discount_reason: _____, ...legacyPayload } = withoutPaidAndNote;
           retry = await supabase
             .from("invoices")
             .insert(legacyPayload)
@@ -295,6 +299,7 @@ export async function saveInvoice(data: {
       savedInvoice = inserted
         ? {
             ...inserted,
+            custom_fees: data.custom_fees || (inserted as any)?.custom_fees || [],
             discount: calculation.discount,
             discount_reason: data.discount_reason,
             note: data.note,

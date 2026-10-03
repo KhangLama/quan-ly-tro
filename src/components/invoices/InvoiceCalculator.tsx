@@ -22,6 +22,8 @@ import {
   Calculator,
   Wallet,
   CalendarDays,
+  Layers,
+  Plus,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -46,7 +48,7 @@ import { ReceiptPreview, type ReceiptPreviewRef } from "./ReceiptPreview";
 import { type ReceiptData } from "./ReceiptCanvas";
 import { VietnameseMonthPicker } from "@/components/ui/VietnameseMonthPicker";
 import { parsePaymentAccounts } from "@/lib/vietqr";
-import type { Invoice } from "@/types";
+import type { Invoice, CustomFeeItem } from "@/types";
 
 interface InvoiceCalculatorProps {
   initialRoomId?: string;
@@ -71,8 +73,32 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
   // Custom rates overrides (initialized from settings)
   const [electricPrice, setElectricPrice] = useState<number>(3500);
   const [waterPrice, setWaterPrice] = useState<number>(25000);
-  const [servicePrice, setServicePrice] = useState<number>(0);
+  const [customFees, setCustomFees] = useState<CustomFeeItem[]>([]);
   const [basePrice, setBasePrice] = useState<number>(2500000);
+
+  const handleAddFee = (name = "", unitPrice = 0, quantity = 1) => {
+    setCustomFees((prev) => [
+      ...prev,
+      {
+        id: `fee-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name,
+        unitPrice,
+        quantity,
+      },
+    ]);
+  };
+
+  const handleUpdateFee = (index: number, field: keyof CustomFeeItem, value: any) => {
+    setCustomFees((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleRemoveFee = (index: number) => {
+    setCustomFees((prev) => prev.filter((_, i) => i !== index));
+  };
 
   // Prorated Rent (R1)
   const [isProrated, setIsProrated] = useState<boolean>(false);
@@ -119,15 +145,14 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       if (res.settings.water_price !== undefined && res.settings.water_price !== null) {
         setWaterPrice(Number(res.settings.water_price));
       }
-      if (res.settings.service_price !== undefined && res.settings.service_price !== null) {
-        setServicePrice(Number(res.settings.service_price));
-      }
     }
 
     if (res.selectedRoom) {
       setRoomId(res.selectedRoom.id);
       setBasePrice(Number(res.selectedRoom.base_price) || 0);
     }
+
+    let loadedFees: CustomFeeItem[] = [];
 
     if (res.existingInvoice) {
       // If invoice already exists for this month, load its saved meter readings
@@ -144,7 +169,35 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       if (res.existingInvoice.status === "paid") {
         setElectricPrice(Number(res.existingInvoice.electric_price));
         setWaterPrice(Number(res.existingInvoice.water_price));
-        setServicePrice(Number(res.existingInvoice.service_price));
+      }
+
+      // Load custom fees for existing invoice
+      if (
+        res.existingInvoice.custom_fees &&
+        Array.isArray(res.existingInvoice.custom_fees) &&
+        res.existingInvoice.custom_fees.length > 0
+      ) {
+        loadedFees = res.existingInvoice.custom_fees;
+      } else if (typeof window !== "undefined") {
+        try {
+          const cachedInvFees = localStorage.getItem(`inv_custom_fees_${targetRoomId}_${targetMonth}`);
+          if (cachedInvFees) {
+            const parsed = JSON.parse(cachedInvFees);
+            if (Array.isArray(parsed) && parsed.length > 0) loadedFees = parsed;
+          }
+        } catch {}
+      }
+
+      // Legacy fallback: If existing invoice had historical service_price > 0 but no custom fees array
+      if (loadedFees.length === 0 && Number(res.existingInvoice.service_price) > 0) {
+        loadedFees = [
+          {
+            id: `legacy-${res.existingInvoice.id}`,
+            name: (res.existingInvoice as any).service_description || "Chi phí khác",
+            unitPrice: Number(res.existingInvoice.service_price),
+            quantity: 1,
+          },
+        ];
       }
 
       // Load or infer discount
@@ -226,8 +279,26 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       setIsProrated(false);
       setPaidAmount("0");
       setSavedInvoice(null);
+
+      // New invoice: Load room's default custom fees
+      if (
+        res.selectedRoom?.custom_fees &&
+        Array.isArray(res.selectedRoom.custom_fees) &&
+        res.selectedRoom.custom_fees.length > 0
+      ) {
+        loadedFees = res.selectedRoom.custom_fees;
+      } else if (typeof window !== "undefined") {
+        try {
+          const cachedRoomFees = localStorage.getItem(`room_custom_fees_${targetRoomId}`);
+          if (cachedRoomFees) {
+            const parsed = JSON.parse(cachedRoomFees);
+            if (Array.isArray(parsed) && parsed.length > 0) loadedFees = parsed;
+          }
+        } catch {}
+      }
     }
 
+    setCustomFees(loadedFees);
     setLoading(false);
   }, []);
 
@@ -245,7 +316,7 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       newWater: Number(newWater) || 0,
       electricPrice,
       waterPrice,
-      servicePrice,
+      customFees,
       discount: Number(discount) || 0,
       isProrated,
       stayDays: Number(stayDays) || 0,
@@ -260,7 +331,7 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
     newWater,
     electricPrice,
     waterPrice,
-    servicePrice,
+    customFees,
     discount,
     isProrated,
     stayDays,
@@ -297,7 +368,8 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       base_price: Number(selectedRoom?.base_price) || basePrice,
       electric_price: electricPrice,
       water_price: waterPrice,
-      service_price: servicePrice,
+      custom_fees: customFees,
+      service_price: calculation.servicePrice,
       discount: Number(discount) || 0,
       discount_reason: discountReason.trim(),
       note: customNote.trim(),
@@ -313,6 +385,13 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
     if (res.success && res.invoice) {
       if (typeof window !== "undefined") {
         try {
+          localStorage.setItem(
+            `inv_custom_fees_${roomId}_${month}`,
+            JSON.stringify(customFees)
+          );
+          if (customFees.length > 0) {
+            localStorage.setItem(`room_custom_fees_${roomId}`, JSON.stringify(customFees));
+          }
           localStorage.setItem(
             `inv_prorated_${roomId}_${month}`,
             JSON.stringify({ isProrated, stayDays, proratedMode, stayFrom, stayTo })
@@ -435,6 +514,7 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       waterUsage: calculation.waterUsage,
       basePrice: calculation.basePrice,
       servicePrice: calculation.servicePrice,
+      customFees,
       discount: calculation.discount,
       discountReason: discountReason.trim() || undefined,
       totalAmount: calculation.totalAmount,
@@ -459,6 +539,7 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
     oldWater,
     newWater,
     waterPrice,
+    customFees,
     calculation,
     discountReason,
     customNote,
@@ -933,7 +1014,156 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
         </div>
       </Card>
 
-      {/* Card 4: Discount / Promotional Event */}
+      {/* Card 4: Custom Other Fees (Chi phí khác - Mục số 4) */}
+      <Card className="p-4 bg-white/95 backdrop-blur-xs border-slate-200/80 shadow-xs space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-indigo-600" />
+              <span>4. Chi phí khác & Dịch vụ</span>
+            </h2>
+            {customFees.length > 0 && (
+              <Badge variant="info" size="sm" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                {customFees.length} khoản phí
+              </Badge>
+            )}
+          </div>
+          <div className="text-right">
+            <span className="text-[11px] font-bold text-slate-500 mr-1.5">Tổng phí khác:</span>
+            <span className="text-xs font-black text-indigo-700">
+              {formatVND(calculation.servicePrice)}đ
+            </span>
+          </div>
+        </div>
+
+        {/* Custom Fees List */}
+        {customFees.length === 0 ? (
+          <div className="p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-500 space-y-2">
+            <p>Phòng này chưa có khoản chi phí khác nào (0đ).</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => handleAddFee("", 0, 1)}
+              className="text-xs font-bold text-indigo-600 border-indigo-200 bg-white hover:bg-indigo-50"
+            >
+              + Thêm chi phí khác
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {customFees.map((fee, idx) => {
+              const itemTotal = (Number(fee.unitPrice) || 0) * (Number(fee.quantity) || 1);
+              return (
+                <div
+                  key={fee.id || idx}
+                  className="p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80 space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-slate-700">
+                      Khoản #{idx + 1}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-800">
+                        = {formatVND(itemTotal)}đ
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFee(idx)}
+                        className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                        title="Xóa khoản phí này"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-12 sm:col-span-5">
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                        Tên khoản phí
+                      </label>
+                      <Input
+                        value={fee.name}
+                        onChange={(e) => handleUpdateFee(idx, "name", e.target.value)}
+                        placeholder="e.g. Tiền rác, Wifi, Gửi xe"
+                        className="text-xs font-medium h-8"
+                      />
+                    </div>
+
+                    <div className="col-span-7 sm:col-span-4">
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                        Đơn giá (VNĐ)
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={fee.unitPrice || ""}
+                        onChange={(e) =>
+                          handleUpdateFee(idx, "unitPrice", Number(e.target.value) || 0)
+                        }
+                        placeholder="0"
+                        className="text-xs font-bold font-mono h-8"
+                      />
+                    </div>
+
+                    <div className="col-span-5 sm:col-span-3">
+                      <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                        Số lượng
+                      </label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={fee.quantity || ""}
+                        onChange={(e) =>
+                          handleUpdateFee(idx, "quantity", Math.max(1, Number(e.target.value) || 1))
+                        }
+                        placeholder="1"
+                        className="text-xs font-bold font-mono text-center h-8"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="pt-1 flex items-center justify-between flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => handleAddFee("", 0, 1)}
+                className="text-xs font-bold text-indigo-600 border-indigo-200 bg-white hover:bg-indigo-50 h-8 gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Thêm khoản phí khác</span>
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Quick presets for common room fees */}
+        <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] text-slate-400 font-medium mr-0.5">Thêm nhanh:</span>
+          {[
+            { name: "Tiền rác", price: 30000, qty: 1 },
+            { name: "Wifi", price: 50000, qty: 1 },
+            { name: "Gửi xe máy", price: 100000, qty: 1 },
+            { name: "Vệ sinh", price: 30000, qty: 1 },
+          ].map((preset) => (
+            <button
+              key={preset.name}
+              type="button"
+              onClick={() => handleAddFee(preset.name, preset.price, preset.qty)}
+              className="px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+            >
+              + {preset.name} ({formatVND(preset.price)}đ)
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {/* Card 5: Discount / Promotional Event */}
       <Card className="p-4 bg-white border-slate-200/80 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">

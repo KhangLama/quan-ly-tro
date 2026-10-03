@@ -12,6 +12,7 @@ import "./unit/empirical-m4-challenge.test.ts";
 import "./unit/empirical-m5-challenge.test.ts";
 import "./unit/empirical-m6-challenge.test.ts";
 import "./unit/contracts.test.ts";
+import "./unit/custom-fees.test.ts";
 import "./integration/invoice-chain.test.ts";
 import "./integration/route-guard.test.ts";
 import "./e2e/tier1-features.test.ts";
