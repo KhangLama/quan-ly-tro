@@ -23,6 +23,56 @@ export interface DashboardDataResult {
   error?: string;
 }
 
+function getInvoicePaymentStatus(inv: Invoice | null) {
+  if (!inv) {
+    return {
+      totalAmount: 0,
+      paidAmount: 0,
+      remainingAmount: 0,
+      billingStatus: "pending" as const,
+      billingBadgeLabel: "Chưa thu" as const,
+    };
+  }
+
+  const amt = Number(inv.total_amount) || 0;
+  const isStatusPaid = inv.status === "paid";
+  const rawPaid =
+    (inv as any).paid_amount !== undefined && (inv as any).paid_amount !== null
+      ? Math.max(0, Number((inv as any).paid_amount))
+      : null;
+
+  // If invoice is explicitly marked as "paid" (or paid_amount reached/exceeded total_amount)
+  if (isStatusPaid || (rawPaid !== null && rawPaid >= amt && amt > 0)) {
+    const paidAmt = rawPaid !== null && rawPaid > amt ? rawPaid : amt;
+    return {
+      totalAmount: amt,
+      paidAmount: paidAmt,
+      remainingAmount: 0,
+      billingStatus: "paid" as const,
+      billingBadgeLabel: "Đã thu" as const,
+    };
+  }
+
+  const paidAmt = rawPaid ?? 0;
+  if (paidAmt > 0 && paidAmt < amt) {
+    return {
+      totalAmount: amt,
+      paidAmount: paidAmt,
+      remainingAmount: Math.max(0, amt - paidAmt),
+      billingStatus: "partial" as const,
+      billingBadgeLabel: "Còn nợ" as const,
+    };
+  } else {
+    return {
+      totalAmount: amt,
+      paidAmount: 0,
+      remainingAmount: amt,
+      billingStatus: "pending" as const,
+      billingBadgeLabel: "Chưa thu" as const,
+    };
+  }
+}
+
 export async function getDashboardData(month?: string): Promise<DashboardDataResult> {
   try {
     const currentMonth = month || new Date().toISOString().substring(0, 7);
@@ -77,19 +127,10 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
     let pendingAmount = 0;
 
     for (const inv of invoices) {
-      const amt = Number(inv.total_amount) || 0;
-      totalRevenue += amt;
-
-      const paidAmt =
-        (inv as any).paid_amount !== undefined && (inv as any).paid_amount !== null
-          ? Math.max(0, Number((inv as any).paid_amount))
-          : inv.status === "paid"
-          ? amt
-          : 0;
-
-      const remAmt = Math.max(0, amt - paidAmt);
-      collectedAmount += paidAmt;
-      pendingAmount += remAmt;
+      const paymentInfo = getInvoicePaymentStatus(inv);
+      totalRevenue += paymentInfo.totalAmount;
+      collectedAmount += paymentInfo.paidAmount;
+      pendingAmount += paymentInfo.remainingAmount;
     }
 
     // Compute expenses KPIs
@@ -217,27 +258,9 @@ export async function getDashboardData(month?: string): Promise<DashboardDataRes
         billingStatus = "empty";
         billingBadgeLabel = "Trống";
       } else if (invoice) {
-        const invTotal = Number(invoice.total_amount) || 0;
-        const invPaid =
-          (invoice as any).paid_amount !== undefined && (invoice as any).paid_amount !== null
-            ? Math.max(0, Number((invoice as any).paid_amount))
-            : invoice.status === "paid"
-            ? invTotal
-            : 0;
-
-        if (invPaid >= invTotal && invTotal > 0) {
-          billingStatus = "paid";
-          billingBadgeLabel = "Đã thu";
-        } else if (invPaid > 0 && invPaid < invTotal) {
-          billingStatus = "partial";
-          billingBadgeLabel = "Còn nợ";
-        } else if (invoice.status === "paid") {
-          billingStatus = "paid";
-          billingBadgeLabel = "Đã thu";
-        } else {
-          billingStatus = "pending";
-          billingBadgeLabel = "Chưa thu";
-        }
+        const paymentInfo = getInvoicePaymentStatus(invoice);
+        billingStatus = paymentInfo.billingStatus;
+        billingBadgeLabel = paymentInfo.billingBadgeLabel;
       } else {
         // Room was rented/occupied in this month, but invoice has not been generated yet
         billingStatus = "pending";

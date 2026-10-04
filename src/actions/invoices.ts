@@ -179,7 +179,9 @@ export async function saveInvoice(data: {
     let savedInvoice: Invoice | null = null;
     
     let effectivePaidAmount: number;
-    if (data.paid_amount !== undefined && data.paid_amount !== null) {
+    if (data.status === "paid" && (data.paid_amount === undefined || data.paid_amount === null || Number(data.paid_amount) < calculation.totalAmount)) {
+      effectivePaidAmount = calculation.totalAmount;
+    } else if (data.paid_amount !== undefined && data.paid_amount !== null) {
       effectivePaidAmount = Math.max(0, Number(data.paid_amount));
     } else if (data.status === "paid") {
       effectivePaidAmount = calculation.totalAmount;

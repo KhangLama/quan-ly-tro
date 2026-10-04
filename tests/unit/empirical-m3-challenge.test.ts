@@ -3,6 +3,7 @@ import { mockDbStore, mockSupabase } from "../../src/lib/supabase/mock-db.ts";
 import { getRooms, getRoomById, createRoom, updateRoom, deleteRoom } from "../../src/actions/rooms.ts";
 import { addTenant, markTenantMovedOut, updateTenant, deleteTenant } from "../../src/actions/tenants.ts";
 import { getDashboardData } from "../../src/actions/dashboard.ts";
+import { saveInvoice } from "../../src/actions/invoices.ts";
 
 describe("Milestone 3 Empirical Gate Verification Suite", () => {
   beforeEach(() => {
@@ -310,6 +311,54 @@ describe("Milestone 3 Empirical Gate Verification Suite", () => {
       expect(cardAug?.status).toBe("empty");
       expect(cardAug?.billingBadgeLabel).toBe("Trống");
       expect(cardAug?.leadTenantName).toBeNull();
+    });
+
+    it("maintains strict equality between top KPIs and bottom room cards even with edge-case paid_amount", async () => {
+      mockDbStore.reset();
+      const r1 = (await createRoom({ code: "P101", base_price: 2500000 })).room!;
+      const r2 = (await createRoom({ code: "P102", base_price: 2600000 })).room!;
+
+      // Room 1: status is pending, paid_amount is 0
+      await saveInvoice({
+        room_id: r1.id,
+        month: "2026-09",
+        old_electric: 100,
+        new_electric: 200,
+        old_water: 10,
+        new_water: 20,
+        base_price: 2500000,
+        electric_price: 4000,
+        water_price: 12000,
+        status: "pending",
+        paid_amount: 0,
+      });
+
+      // Room 2: status is explicitly paid, but paid_amount in DB happens to be 0
+      await saveInvoice({
+        room_id: r2.id,
+        month: "2026-09",
+        old_electric: 0,
+        new_electric: 0,
+        old_water: 0,
+        new_water: 0,
+        base_price: 2600000,
+        electric_price: 4000,
+        water_price: 12000,
+        status: "paid",
+        paid_amount: 0,
+      });
+
+      const dash = await getDashboardData("2026-09");
+      const card1 = dash.rooms.find((c) => c.id === r1.id);
+      const card2 = dash.rooms.find((c) => c.id === r2.id);
+
+      expect(card1?.billingBadgeLabel).toBe("Chưa thu");
+      expect(card2?.billingBadgeLabel).toBe("Đã thu");
+
+      // Verify that card2 is counted as collected (NOT pending!)
+      expect(dash.stats.collectedAmount).toBe(2600000);
+      expect(dash.stats.pendingAmount).toBe(card1?.invoice?.total_amount);
+      expect(dash.stats.totalRevenue).toBe(2600000 + Number(card1?.invoice?.total_amount));
     });
   });
 });
