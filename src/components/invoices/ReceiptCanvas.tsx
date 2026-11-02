@@ -413,6 +413,18 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                             alt="QR Tiền phòng"
                             crossOrigin="anonymous"
                             className="w-[112px] h-[112px] object-contain block"
+                            onError={(e) => {
+                              const fallback = buildVietQRUrl({
+                                bankCode: paymentConfig.room.bank,
+                                accountNumber: paymentConfig.room.accountNumber,
+                                accountName: paymentConfig.room.accountName,
+                                amount: roomAmount,
+                                direct: true,
+                              });
+                              if (e.currentTarget.src !== fallback) {
+                                e.currentTarget.src = fallback;
+                              }
+                            }}
                           />
                         </div>
                         <div className="text-[9.5px] font-bold text-blue-700 mt-0.5">Mã QR Tiền Phòng</div>
@@ -461,6 +473,18 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                             alt="QR Tiền điện nước"
                             crossOrigin="anonymous"
                             className="w-[112px] h-[112px] object-contain block"
+                            onError={(e) => {
+                              const fallback = buildVietQRUrl({
+                                bankCode: paymentConfig.service.bank,
+                                accountNumber: paymentConfig.service.accountNumber,
+                                accountName: paymentConfig.service.accountName,
+                                amount: utilityAmount,
+                                direct: true,
+                              });
+                              if (e.currentTarget.src !== fallback) {
+                                e.currentTarget.src = fallback;
+                              }
+                            }}
                           />
                         </div>
                         <div className="text-[9.5px] font-bold text-amber-700 mt-0.5">Mã QR Điện Nước</div>
@@ -483,6 +507,18 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                       alt="Mã VietQR thanh toán"
                       crossOrigin="anonymous"
                       className="w-[120px] h-[120px] object-contain mx-auto block"
+                      onError={(e) => {
+                        const fallback = buildVietQRUrl({
+                          bankCode: paymentConfig.room.bank,
+                          accountNumber: paymentConfig.room.accountNumber,
+                          accountName: paymentConfig.room.accountName,
+                          amount: data.totalAmount,
+                          direct: true,
+                        });
+                        if (e.currentTarget.src !== fallback) {
+                          e.currentTarget.src = fallback;
+                        }
+                      }}
                     />
                   </div>
                 )}

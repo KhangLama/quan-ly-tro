@@ -159,10 +159,13 @@ export interface VietQRParams {
   accountName?: string;
   amount: number;
   description?: string;
+  direct?: boolean;
 }
 
 /**
- * Builds standard Napas VietQR image URL from img.vietqr.io
+ * Builds standard Napas VietQR image URL.
+ * By default, routes through internal /api/qr proxy to completely eliminate browser CORS blocks
+ * and 301 redirects, ensuring 100% reliable canvas capture, download and clipboard copying.
  */
 export function buildVietQRUrl({
   bankCode,
@@ -170,6 +173,7 @@ export function buildVietQRUrl({
   accountName,
   amount,
   description,
+  direct = false,
 }: VietQRParams): string {
   const cleanBank = (bankCode || "MB").trim().toUpperCase();
   const cleanAccount = (accountNumber || "").replace(/[^a-zA-Z0-9]/g, "");
@@ -178,12 +182,25 @@ export function buildVietQRUrl({
   const encodedDesc = unaccentedDesc ? encodeURIComponent(unaccentedDesc) : "";
   const cleanName = accountName ? encodeURIComponent(removeVietnameseAccents(accountName).toUpperCase()) : "";
 
-  let url = `https://img.vietqr.io/image/${cleanBank}-${cleanAccount}-qr_only.png?amount=${cleanAmount}`;
+  if (direct) {
+    // Direct VietQR SVG endpoint (avoids 301 redirect without CORS headers)
+    let url = `https://img.vietqr.io/image/${cleanBank}-${cleanAccount}-qr_only.svg?amount=${cleanAmount}`;
+    if (encodedDesc) {
+      url += `&addInfo=${encodedDesc}`;
+    }
+    if (cleanName) {
+      url += `&accountName=${cleanName}`;
+    }
+    return url;
+  }
+
+  // Same-origin Next.js proxy route: completely immune to CORS issues
+  let proxyUrl = `/api/qr?bank=${encodeURIComponent(cleanBank)}&account=${encodeURIComponent(cleanAccount)}&amount=${cleanAmount}`;
   if (encodedDesc) {
-    url += `&addInfo=${encodedDesc}`;
+    proxyUrl += `&desc=${encodedDesc}`;
   }
   if (cleanName) {
-    url += `&accountName=${cleanName}`;
+    proxyUrl += `&name=${cleanName}`;
   }
-  return url;
+  return proxyUrl;
 }
