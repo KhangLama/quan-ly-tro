@@ -108,7 +108,7 @@ export function resolveReceiptPayment(data: ReceiptData): ResolvedReceiptPayment
   }
 
   const roomTransferDesc = `${data.roomCode} ${shortMonth} TIEN PHONG`.trim();
-  const serviceTransferDesc = `${data.roomCode} ${shortMonth} DIEN NUOC`.trim();
+  const serviceTransferDesc = ""; // Để mặc định theo App Ngân hàng cho khoản tiền điện nước
   const singleTransferDesc = `${data.roomCode} ${shortMonth}`.trim();
 
   const roomQrUrl =
@@ -129,7 +129,6 @@ export function resolveReceiptPayment(data: ReceiptData): ResolvedReceiptPayment
           accountNumber: paymentConfig.service.accountNumber,
           accountName: paymentConfig.service.accountName,
           amount: utilityAmount,
-          description: serviceTransferDesc,
         })
       : null;
 
@@ -504,7 +503,9 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                       {paymentConfig.service.accountName && (
                         <div className="truncate uppercase">Chủ TK: <strong>{paymentConfig.service.accountName}</strong></div>
                       )}
-                      <div>Nội dung: <strong className="text-amber-800">{serviceTransferDesc}</strong></div>
+                      {serviceTransferDesc && (
+                        <div>Nội dung: <strong className="text-amber-800">{serviceTransferDesc}</strong></div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -690,12 +691,14 @@ export const StandaloneQrCard = forwardRef<HTMLDivElement, StandaloneQrCardProps
               <strong className="uppercase text-right truncate">{account.accountName}</strong>
             </div>
           )}
-          <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-            <span className="text-slate-500 font-medium">Nội dung CK:</span>
-            <strong className={isRoom ? "text-blue-700" : "text-amber-700"}>
-              {transferDesc}
-            </strong>
-          </div>
+          {transferDesc && (
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+              <span className="text-slate-500 font-medium">Nội dung CK:</span>
+              <strong className={isRoom ? "text-blue-700" : "text-amber-700"}>
+                {transferDesc}
+              </strong>
+            </div>
+          )}
         </div>
       </div>
     );
