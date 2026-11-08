@@ -9,13 +9,15 @@ import { Button } from "@/components/ui/Button";
 import { ReceiptModal, type ReceiptData } from "@/components/invoices/ReceiptModal";
 import { deleteInvoice } from "@/actions/invoices";
 import { formatVND } from "@/lib/utils";
-import type { Invoice } from "@/types";
+import { parsePaymentAccounts } from "@/lib/vietqr";
+import type { Invoice, Setting } from "@/types";
 
 interface InvoiceHistoryProps {
   invoices: Invoice[];
   roomCode: string;
   customerName?: string;
   customerPhone?: string;
+  settings?: Setting | null;
   onRefresh?: () => void;
 }
 
@@ -24,6 +26,7 @@ export function InvoiceHistory({
   roomCode,
   customerName,
   customerPhone,
+  settings,
   onRefresh,
 }: InvoiceHistoryProps) {
   const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
@@ -64,11 +67,9 @@ export function InvoiceHistory({
     const totalAmount = Number(inv.total_amount) || 0;
 
     const subtotal = basePrice + electricCost + waterCost + servicePrice;
-    const rawDiscount = (inv as any).discount;
+    const rawDiscount = Number((inv as any).discount) || 0;
     const discount =
-      rawDiscount !== undefined && rawDiscount !== null
-        ? Number(rawDiscount)
-        : Math.max(0, subtotal - totalAmount);
+      rawDiscount > 0 ? rawDiscount : Math.max(0, subtotal - totalAmount);
 
     let discountReason = (inv as any).discount_reason;
     if (!discountReason && typeof window !== "undefined") {
@@ -86,9 +87,14 @@ export function InvoiceHistory({
         receiptNote = localStorage.getItem(`inv_note_${inv.room_id}_${inv.month}`);
       } catch {}
     }
+    if (!receiptNote && settings?.receipt_note) {
+      receiptNote = settings.receipt_note;
+    }
 
-    let paymentConfig: any = undefined;
-    if (typeof window !== "undefined") {
+    let paymentConfig: any = settings?.bank_info
+      ? parsePaymentAccounts(settings.bank_info)
+      : undefined;
+    if (!paymentConfig && typeof window !== "undefined") {
       try {
         const cached = localStorage.getItem("app_payment_accounts");
         if (cached) paymentConfig = JSON.parse(cached);
@@ -96,18 +102,28 @@ export function InvoiceHistory({
     }
 
     let customFees: any = (inv as any).custom_fees;
-    if (!customFees && typeof window !== "undefined") {
+    if ((!customFees || !Array.isArray(customFees) || customFees.length === 0) && typeof window !== "undefined") {
       try {
         const cached = localStorage.getItem(`inv_custom_fees_${inv.room_id}_${inv.month}`);
         if (cached) customFees = JSON.parse(cached);
       } catch {}
     }
 
+    const paidAmount =
+      (inv as any).paid_amount !== undefined && (inv as any).paid_amount !== null
+        ? Number((inv as any).paid_amount) || 0
+        : inv.status === "paid"
+        ? totalAmount
+        : 0;
+
     setSelectedReceipt({
       roomCode,
       month: inv.month,
       customerName,
       customerPhone,
+      address: settings?.address || undefined,
+      bankInfo: settings?.bank_info || undefined,
+      serviceDescription: settings?.service_description || undefined,
       receiptNote: receiptNote || undefined,
       paymentConfig,
       oldElectric: Number(inv.old_electric),
@@ -126,6 +142,7 @@ export function InvoiceHistory({
       discount,
       discountReason,
       totalAmount,
+      paidAmount,
     });
   };
 

@@ -9,7 +9,12 @@ import React, {
   useCallback,
 } from "react";
 import { toPng, toBlob } from "html-to-image";
-import { ReceiptCanvas, type ReceiptData } from "./ReceiptCanvas";
+import {
+  ReceiptCanvas,
+  type ReceiptData,
+  type QrDisplayFilter,
+} from "./ReceiptCanvas";
+import { parsePaymentAccounts } from "@/lib/vietqr";
 import {
   Maximize2,
   ZoomIn,
@@ -17,6 +22,7 @@ import {
   Smartphone,
   Sparkles,
   RotateCcw,
+  QrCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +30,8 @@ export interface ReceiptPreviewRef {
   captureBlob: () => Promise<Blob>;
   capturePng: () => Promise<string>;
   getExportNode: () => HTMLDivElement | null;
+  getQrFilter: () => QrDisplayFilter;
+  setQrFilter: (filter: QrDisplayFilter) => void;
 }
 
 export interface ReceiptPreviewProps {
@@ -32,11 +40,44 @@ export interface ReceiptPreviewProps {
   maxHeight?: string;
 }
 
+async function waitForImagesAndFonts(node: HTMLElement) {
+  if (typeof document !== "undefined" && document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // Ignore font loading errors
+    }
+  }
+
+  const images = Array.from(node.querySelectorAll("img"));
+  if (images.length > 0) {
+    await Promise.all(
+      images.map(async (img) => {
+        if (!img.complete) {
+          await new Promise((resolve) => {
+            img.onload = () => resolve(null);
+            img.onerror = () => resolve(null);
+          });
+        }
+        if (typeof img.decode === "function") {
+          try {
+            await img.decode();
+          } catch {
+            // Ignore decode errors
+          }
+        }
+      })
+    );
+  }
+}
+
 export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>(
   ({ data, className, maxHeight = "65vh" }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const previewWrapperRef = useRef<HTMLDivElement>(null);
     const exportRef = useRef<HTMLDivElement>(null);
+
+    const [qrFilter, setQrFilter] = useState<QrDisplayFilter>("all");
 
     // Initial container width estimation
     const [containerWidth, setContainerWidth] = useState<number>(() => {
@@ -80,7 +121,7 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
       }
     }, []);
 
-    // Measure natural height of receipt preview
+    // Measure natural height of receipt preview whenever data or qrFilter changes
     useEffect(() => {
       const measureHeight = () => {
         if (previewWrapperRef.current) {
@@ -92,10 +133,10 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
       measureHeight();
       const timer = setTimeout(measureHeight, 100);
       return () => clearTimeout(timer);
-    }, [data]);
+    }, [data, qrFilter]);
 
     // Calculate fit scale based on available container width
-    const padding = 20; // 10px on each side
+    const padding = 20;
     const availableWidth = Math.max(280, containerWidth - padding);
     const fitScale = Math.min(1, Math.max(0.35, availableWidth / 580));
 
@@ -133,31 +174,7 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
             throw new Error("Không tìm thấy canvas biên lai để xuất ảnh");
           }
 
-          // Wait for fonts and all images (including QR codes) to be loaded
-          if (typeof document !== "undefined" && document.fonts?.ready) {
-            try {
-              await document.fonts.ready;
-            } catch {
-              // Ignore font loading errors if any
-            }
-          }
-
-          const images = Array.from(node.querySelectorAll("img"));
-          if (images.length > 0) {
-            await Promise.all(
-              images.map(
-                (img) =>
-                  new Promise((resolve) => {
-                    if (img.complete) {
-                      resolve(null);
-                    } else {
-                      img.onload = () => resolve(null);
-                      img.onerror = () => resolve(null);
-                    }
-                  })
-              )
-            );
-          }
+          await waitForImagesAndFonts(node);
 
           const targetWidth = 580;
           const targetHeight = Math.max(
@@ -168,8 +185,8 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
           );
 
           const blob = await toBlob(node, {
-            quality: 0.98,
-            pixelRatio: 2,
+            quality: 1,
+            pixelRatio: 2.5,
             backgroundColor: "#ffffff",
             width: targetWidth,
             height: targetHeight,
@@ -199,30 +216,7 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
             throw new Error("Không tìm thấy canvas biên lai để xuất ảnh");
           }
 
-          if (typeof document !== "undefined" && document.fonts?.ready) {
-            try {
-              await document.fonts.ready;
-            } catch {
-              // Ignore
-            }
-          }
-
-          const images = Array.from(node.querySelectorAll("img"));
-          if (images.length > 0) {
-            await Promise.all(
-              images.map(
-                (img) =>
-                  new Promise((resolve) => {
-                    if (img.complete) {
-                      resolve(null);
-                    } else {
-                      img.onload = () => resolve(null);
-                      img.onerror = () => resolve(null);
-                    }
-                  })
-              )
-            );
-          }
+          await waitForImagesAndFonts(node);
 
           const targetWidth = 580;
           const targetHeight = Math.max(
@@ -233,8 +227,8 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
           );
 
           const dataUrl = await toPng(node, {
-            quality: 0.98,
-            pixelRatio: 2,
+            quality: 1,
+            pixelRatio: 2.5,
             backgroundColor: "#ffffff",
             width: targetWidth,
             height: targetHeight,
@@ -255,8 +249,10 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
         },
 
         getExportNode: () => exportRef.current,
+        getQrFilter: () => qrFilter,
+        setQrFilter: (f: QrDisplayFilter) => setQrFilter(f),
       }),
-      []
+      [qrFilter]
     );
 
     if (!data) {
@@ -272,11 +268,72 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
       );
     }
 
+    const paymentConfig = data.paymentConfig || parsePaymentAccounts(data.bankInfo);
+    const isSplit = Boolean(
+      paymentConfig.split &&
+        paymentConfig.room.accountNumber &&
+        paymentConfig.service.accountNumber
+    );
+
     const isScaled = currentScale < 0.999;
     const isSmallScreen = containerWidth < 620;
 
     return (
       <div className={cn("space-y-2", className)}>
+        {/* QR Display Mode Selector (when Dual Account Split is enabled) */}
+        {isSplit && (
+          <div className="bg-indigo-50/70 border border-indigo-200/80 rounded-xl p-2 space-y-1.5">
+            <div className="flex items-center justify-between gap-2 text-[11px] font-bold text-indigo-950">
+              <span className="flex items-center gap-1.5">
+                <QrCode className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span>Chế độ mã QR trên ảnh biên lai:</span>
+              </span>
+              <span className="text-[10px] font-medium text-indigo-700 hidden sm:inline">
+                Chọn 1 mã nếu khách quét bằng ảnh từ thư viện App Bank
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setQrFilter("all")}
+                className={cn(
+                  "px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer border text-center",
+                  qrFilter === "all"
+                    ? "bg-slate-900 text-white border-slate-900 shadow-2xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                )}
+              >
+                Cả 2 mã (So-le)
+              </button>
+              <button
+                type="button"
+                onClick={() => setQrFilter("room")}
+                className={cn(
+                  "px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer border text-center",
+                  qrFilter === "room"
+                    ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                    : "bg-white text-blue-700 border-blue-200 hover:bg-blue-50"
+                )}
+              >
+                Chỉ QR 1 (Tiền phòng)
+              </button>
+              <button
+                type="button"
+                onClick={() => setQrFilter("service")}
+                className={cn(
+                  "px-2 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer border text-center",
+                  qrFilter === "service"
+                    ? "bg-amber-600 text-white border-amber-600 shadow-2xs"
+                    : "bg-white text-amber-800 border-amber-200 hover:bg-amber-50"
+                )}
+              >
+                Chỉ QR 2 (Điện nước)
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Controls Toolbar */}
         <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 bg-slate-100/90 rounded-xl border border-slate-200/90 text-xs shadow-2xs select-none">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -387,15 +444,23 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
                 }}
               >
                 <div ref={previewWrapperRef}>
-                  <ReceiptCanvas data={data} id="receipt-canvas-preview" />
+                  <ReceiptCanvas
+                    data={data}
+                    qrFilter={qrFilter}
+                    id="receipt-canvas-preview"
+                  />
                 </div>
               </div>
             </div>
           ) : (
-            /* 100% Unscaled Mode: Standard block flow starting at left coordinate (never clips left side) */
+            /* 100% Unscaled Mode: Standard block flow starting at left coordinate */
             <div className="w-fit min-w-[580px] mx-auto">
               <div ref={previewWrapperRef}>
-                <ReceiptCanvas data={data} id="receipt-canvas-preview" />
+                <ReceiptCanvas
+                  data={data}
+                  qrFilter={qrFilter}
+                  id="receipt-canvas-preview"
+                />
               </div>
             </div>
           )}
@@ -405,7 +470,7 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
         <div className="flex items-center justify-center gap-1.5 px-2 py-0.5 text-[11px] text-slate-500 text-center">
           <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
           <span>
-            Ảnh khi sao chép hoặc tải về luôn là <strong>bản gốc Retina 2x sắc nét</strong>, không bị vỡ hay cắt xén.
+            Mã QR được xuất chuẩn <strong>PNG độ tương phản cao (Quiet Zone 4 ô, không dính logo che tâm)</strong>, quét bằng ảnh 100% nhạy trên mọi App Ngân hàng.
           </span>
         </div>
 
@@ -423,7 +488,12 @@ export const ReceiptPreview = forwardRef<ReceiptPreviewRef, ReceiptPreviewProps>
             visibility: "visible",
           }}
         >
-          <ReceiptCanvas ref={exportRef} data={data} id="receipt-canvas-export" />
+          <ReceiptCanvas
+            ref={exportRef}
+            data={data}
+            qrFilter={qrFilter}
+            id="receipt-canvas-export"
+          />
         </div>
       </div>
     );

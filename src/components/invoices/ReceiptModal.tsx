@@ -23,13 +23,20 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
 
   if (!data) return null;
 
+  const getFileNameSuffix = () => {
+    const f = receiptPreviewRef.current?.getQrFilter?.();
+    if (f === "room") return "_QR1_TienPhong";
+    if (f === "service") return "_QR2_DienNuoc";
+    return "";
+  };
+
   const handleDownloadImage = async () => {
     if (!receiptPreviewRef.current) return;
     try {
       setDownloading(true);
       const dataUrl = await receiptPreviewRef.current.capturePng();
       const link = document.createElement("a");
-      link.download = `Phieu_Tien_Phong_${data.roomCode}_${data.month}.png`;
+      link.download = `Phieu_Tien_Phong_${data.roomCode}_${data.month}${getFileNameSuffix()}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {

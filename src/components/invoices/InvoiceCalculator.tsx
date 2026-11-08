@@ -160,14 +160,35 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
       setNewElectric(String(res.existingInvoice.new_electric));
       setOldWater(String(res.existingInvoice.old_water));
       setNewWater(String(res.existingInvoice.new_water));
-      setBasePrice(
-        Number(res.selectedRoom?.base_price) || Number(res.existingInvoice.base_price) || 0
-      );
 
-      // If the invoice is already paid, preserve historical rates.
-      // If pending / in progress, adopt current active settings rates!
-      if (res.existingInvoice.status === "paid") {
+      let hasLocalProrated = false;
+      if (typeof window !== "undefined") {
+        try {
+          const savedProrated = localStorage.getItem(`inv_prorated_${targetRoomId}_${targetMonth}`);
+          if (savedProrated) {
+            const parsed = JSON.parse(savedProrated);
+            hasLocalProrated = Boolean(parsed.isProrated);
+          }
+        } catch {}
+      }
+
+      // Preserve the saved invoice's base_price unless local prorated state is active
+      // (which computes prorated rent from selectedRoom.base_price)
+      if (hasLocalProrated) {
+        setBasePrice(
+          Number(res.selectedRoom?.base_price) || Number(res.existingInvoice.base_price) || 0
+        );
+      } else {
+        setBasePrice(
+          Number(res.existingInvoice.base_price) || Number(res.selectedRoom?.base_price) || 0
+        );
+      }
+
+      // Preserve historical electric/water rates saved on the existing invoice
+      if (Number(res.existingInvoice.electric_price) > 0) {
         setElectricPrice(Number(res.existingInvoice.electric_price));
+      }
+      if (Number(res.existingInvoice.water_price) > 0) {
         setWaterPrice(Number(res.existingInvoice.water_price));
       }
 
@@ -215,10 +236,10 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
         Math.max(0, invNewW - invOldW) * invWRate +
         invSRate;
 
-      const rawDiscount = (res.existingInvoice as any).discount;
+      const rawDiscount = Number((res.existingInvoice as any).discount) || 0;
       const savedDiscount =
-        rawDiscount !== undefined && rawDiscount !== null
-          ? Number(rawDiscount)
+        rawDiscount > 0
+          ? rawDiscount
           : Math.max(0, invSubtotal - Number(res.existingInvoice.total_amount));
 
       let savedReason = (res.existingInvoice as any).discount_reason;

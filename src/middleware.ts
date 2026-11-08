@@ -20,7 +20,10 @@ export async function middleware(request: NextRequest) {
   const isAuthenticated = await verifySessionToken(token, secret);
 
   const isLoginPage = pathname === "/login";
-  const isPublicApiAuth = pathname === "/api/auth/login" || pathname === "/api/auth/logout";
+  const isPublicApiAuth =
+    pathname === "/api/auth/login" ||
+    pathname === "/api/auth/logout" ||
+    pathname === "/api/qr";
 
   // If already authenticated and accessing login page, redirect to home / dashboard
   if (isAuthenticated && isLoginPage) {
