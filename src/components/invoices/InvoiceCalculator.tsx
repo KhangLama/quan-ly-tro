@@ -573,30 +573,30 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
     basePrice,
   ]);
 
-  // Handle Share: Share ONLY the image file
+  // Handle Share: Share Combo of 3 images (Receipt + Room QR + Service QR) when split is active
   const handleShareImage = async () => {
     if (!receiptPreviewRef.current || !selectedRoom) return;
     try {
       setSharing(true);
-      const blob = await receiptPreviewRef.current.captureBlob();
-      const file = new File(
-        [blob],
-        `Phieu_Tien_Phong_${selectedRoom.code}_${month}.png`,
-        { type: "image/png" }
+      const files = await receiptPreviewRef.current.captureComboFiles(
+        selectedRoom.code,
+        month
       );
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (navigator.canShare && navigator.canShare({ files })) {
         await navigator.share({
-          files: [file], // Only share the PNG image file, no text attached
+          files,
         });
       } else {
-        // Fallback for desktop: copy image to clipboard
-        await handleCopyImage();
+        // Fallback for desktop: download combo & copy active image
+        await handleDownloadImage();
         if (formData?.leadTenant?.phone) {
           const cleanPhone = formData.leadTenant.phone.replace(/\D/g, "");
           window.open(`https://zalo.me/${cleanPhone}`, "_blank");
         } else {
-          alert("Đã sao chép ảnh biên lai vào bộ nhớ tạm! Bạn chỉ cần dán (Ctrl+V) vào khung chat người nhận.");
+          alert(
+            "Đã tải bộ 3 ảnh (1 Phiếu + 2 Thẻ QR) về máy! Bạn có thể đính kèm vào khung chat Zalo người nhận."
+          );
         }
       }
     } catch (err: any) {
@@ -608,16 +608,15 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
     }
   };
 
-  // Handle Download Image
+  // Handle Download Image (Downloads all 3 combo images when split is active)
   const handleDownloadImage = async () => {
     if (!receiptPreviewRef.current || !selectedRoom) return;
     try {
       setDownloading(true);
-      const dataUrl = await receiptPreviewRef.current.capturePng();
-      const link = document.createElement("a");
-      link.download = `Phieu_Tien_Phong_${selectedRoom.code}_${month}.png`;
-      link.href = dataUrl;
-      link.click();
+      await receiptPreviewRef.current.downloadComboImages(
+        selectedRoom.code,
+        month
+      );
     } catch (err) {
       console.error("Failed to generate image", err);
       alert("Không thể tạo ảnh biên lai. Vui lòng thử lại!");
@@ -1452,7 +1451,11 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
               className="w-full bg-[#0068FF] hover:bg-[#0055d4] text-white font-extrabold text-xs gap-2 h-11 shadow-sm shadow-blue-500/20 whitespace-nowrap"
             >
               <Share2 className="w-4 h-4 shrink-0" />
-              <span>Chia sẻ ảnh</span>
+              <span>
+                {paymentConfig?.split
+                  ? "Chia sẻ Combo 3 ảnh (1 Phiếu + 2 QR)"
+                  : "Chia sẻ ảnh"}
+              </span>
             </Button>
 
             <div className="grid grid-cols-3 gap-2">
@@ -1476,7 +1479,7 @@ export function InvoiceCalculator({ initialRoomId, initialMonth }: InvoiceCalcul
                 className="w-full font-bold text-xs gap-1.5 h-10 text-slate-700 border-slate-300 hover:bg-white whitespace-nowrap"
               >
                 <Download className="w-4 h-4 shrink-0 text-slate-600" />
-                <span>Tải ảnh</span>
+                <span>{paymentConfig?.split ? "Tải bộ 3 ảnh" : "Tải ảnh"}</span>
               </Button>
 
               {/* Copy Image Button */}

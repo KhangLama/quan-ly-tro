@@ -5,7 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Download, Check, Share2, Sparkles, Image as ImageIcon } from "lucide-react";
 import { ReceiptPreview, type ReceiptPreviewRef } from "./ReceiptPreview";
-import { type ReceiptData } from "./ReceiptCanvas";
+import { resolveReceiptPayment, type ReceiptData } from "./ReceiptCanvas";
 
 export type { ReceiptData };
 
@@ -23,22 +23,13 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
 
   if (!data) return null;
 
-  const getFileNameSuffix = () => {
-    const f = receiptPreviewRef.current?.getQrFilter?.();
-    if (f === "room") return "_QR1_TienPhong";
-    if (f === "service") return "_QR2_DienNuoc";
-    return "";
-  };
+  const isSplit = resolveReceiptPayment(data).isSplit;
 
   const handleDownloadImage = async () => {
     if (!receiptPreviewRef.current) return;
     try {
       setDownloading(true);
-      const dataUrl = await receiptPreviewRef.current.capturePng();
-      const link = document.createElement("a");
-      link.download = `Phieu_Tien_Phong_${data.roomCode}_${data.month}${getFileNameSuffix()}.png`;
-      link.href = dataUrl;
-      link.click();
+      await receiptPreviewRef.current.downloadComboImages(data.roomCode, data.month);
     } catch (err) {
       console.error("Failed to generate image", err);
       alert("Không thể tạo ảnh biên lai. Vui lòng thử lại!");
@@ -73,24 +64,26 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
     if (!receiptPreviewRef.current) return;
     try {
       setSharing(true);
-      const blob = await receiptPreviewRef.current.captureBlob();
-      const file = new File(
-        [blob],
-        `Phieu_Tien_Phong_${data.roomCode}_${data.month}.png`,
-        { type: "image/png" }
+      const files = await receiptPreviewRef.current.captureComboFiles(
+        data.roomCode,
+        data.month
       );
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (navigator.canShare && navigator.canShare({ files })) {
         await navigator.share({
-          files: [file], // Only share the image file, no text
+          files,
         });
       } else {
-        await handleCopyImage();
+        await handleDownloadImage();
         if (data.customerPhone) {
           const cleanPhone = data.customerPhone.replace(/\D/g, "");
           window.open(`https://zalo.me/${cleanPhone}`, "_blank");
         } else {
-          alert("Đã sao chép ảnh biên lai vào bộ nhớ tạm! Bạn chỉ cần dán (Ctrl+V) vào khung chat người nhận.");
+          alert(
+            isSplit
+              ? "Đã tải bộ 3 ảnh (1 Phiếu + 2 Thẻ QR) về máy! Bạn có thể đính kèm vào khung chat Zalo người nhận."
+              : "Đã tải ảnh biên lai về máy!"
+          );
         }
       }
     } catch (err: any) {
@@ -113,7 +106,11 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
           <span>Biên lai phiếu báo tiền phòng</span>
         </div>
       }
-      description="Xem trước phiếu thu, gửi Zalo hoặc tải ảnh lưu trữ"
+      description={
+        isSplit
+          ? "Combo 3 ảnh: 1 Phiếu báo tiền phòng + 2 Thẻ QR độc lập (quét bằng ảnh 100% chuẩn xác)"
+          : "Xem trước phiếu thu, gửi Zalo hoặc tải ảnh lưu trữ"
+      }
     >
       <div className="space-y-3.5">
         {/* Action Buttons */}
@@ -126,7 +123,9 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
             className="w-full bg-[#0068FF] hover:bg-[#0055d4] text-white font-extrabold text-xs gap-2 h-11 shadow-sm shadow-blue-500/20 whitespace-nowrap"
           >
             <Share2 className="w-4 h-4 shrink-0" />
-            <span>Chia sẻ ảnh</span>
+            <span>
+              {isSplit ? "Chia sẻ Combo 3 ảnh (1 Phiếu + 2 QR)" : "Chia sẻ ảnh"}
+            </span>
           </Button>
 
           <div className="grid grid-cols-2 gap-2">
@@ -138,7 +137,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
               className="w-full font-bold text-xs gap-1.5 h-10 text-slate-700 border-slate-300 hover:bg-white whitespace-nowrap"
             >
               <Download className="w-4 h-4 shrink-0 text-slate-600" />
-              <span>Tải ảnh về máy</span>
+              <span>{isSplit ? "Tải trọn bộ 3 ảnh" : "Tải ảnh về máy"}</span>
             </Button>
 
             <Button
@@ -156,7 +155,7 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
               ) : (
                 <>
                   <ImageIcon className="w-4 h-4 text-slate-500 shrink-0" />
-                  <span>Sao chép ảnh</span>
+                  <span>Sao chép ảnh đang xem</span>
                 </>
               )}
             </Button>
@@ -170,7 +169,9 @@ export function ReceiptModal({ isOpen, onClose, data }: ReceiptModalProps) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-[#0068FF] hover:underline font-semibold"
               >
-                <span>💬 Mở khung chat Zalo với {data.customerName || "khách"} ({data.customerPhone})</span>
+                <span>
+                  💬 Mở khung chat Zalo với {data.customerName || "khách"} ({data.customerPhone})
+                </span>
               </a>
             </div>
           )}

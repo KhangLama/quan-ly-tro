@@ -9,8 +9,6 @@ import {
 
 import type { CustomFeeItem } from "@/types";
 
-export type QrDisplayFilter = "all" | "room" | "service";
-
 export interface ReceiptData {
   roomCode: string;
   month: string; // e.g. "2026-08"
@@ -44,21 +42,143 @@ export interface ReceiptData {
   stayDateRange?: string;
   originalBasePrice?: number;
   paidAmount?: number;
-  qrFilter?: QrDisplayFilter;
+}
+
+export interface ResolvedReceiptPayment {
+  paymentConfig: PaymentAccountsConfig;
+  isSplit: boolean;
+  hasAccount: boolean;
+  safeBasePrice: number;
+  safeDiscount: number;
+  safeTotalAmount: number;
+  safePaidAmount: number;
+  hasPartialPayment: boolean;
+  effectiveQrAmount: number;
+  roomAmount: number;
+  utilityAmount: number;
+  roomTransferDesc: string;
+  serviceTransferDesc: string;
+  singleTransferDesc: string;
+  roomQrUrl: string | null;
+  serviceQrUrl: string | null;
+  singleQrUrl: string | null;
+}
+
+export function resolveReceiptPayment(data: ReceiptData): ResolvedReceiptPayment {
+  const shortMonth = data.month?.includes("-")
+    ? `T${parseInt(data.month.split("-")[1], 10) || data.month}`
+    : data.month || "";
+
+  const paymentConfig = data.paymentConfig || parsePaymentAccounts(data.bankInfo);
+  const isSplit = Boolean(
+    paymentConfig.split &&
+      paymentConfig.room.accountNumber &&
+      paymentConfig.service.accountNumber
+  );
+  const hasAccount = Boolean(paymentConfig.room.accountNumber);
+
+  const safeBasePrice = Math.max(0, Math.round(data.basePrice || 0));
+  const safeDiscount = Math.max(0, Math.round(data.discount || 0));
+  const safeTotalAmount = Math.max(0, Math.round(data.totalAmount || 0));
+  const safePaidAmount =
+    data.paidAmount !== undefined && data.paidAmount !== null
+      ? Math.max(0, Math.round(data.paidAmount))
+      : 0;
+
+  const hasPartialPayment = safePaidAmount > 0 && safePaidAmount < safeTotalAmount;
+  const effectiveQrAmount = hasPartialPayment
+    ? Math.max(0, safeTotalAmount - safePaidAmount)
+    : safeTotalAmount;
+
+  const rawRoomAmount = Math.max(0, safeBasePrice - safeDiscount);
+  const rawUtilityAmount = Math.max(0, safeTotalAmount - rawRoomAmount);
+
+  let roomAmount = rawRoomAmount;
+  let utilityAmount = rawUtilityAmount;
+
+  if (hasPartialPayment) {
+    if (safePaidAmount === rawUtilityAmount && rawUtilityAmount > 0) {
+      utilityAmount = 0;
+      roomAmount = rawRoomAmount;
+    } else {
+      roomAmount = Math.max(0, rawRoomAmount - safePaidAmount);
+      const remainingPaid = Math.max(0, safePaidAmount - rawRoomAmount);
+      utilityAmount = Math.max(0, rawUtilityAmount - remainingPaid);
+    }
+  }
+
+  const roomTransferDesc = `${data.roomCode} ${shortMonth} TIEN PHONG`.trim();
+  const serviceTransferDesc = `${data.roomCode} ${shortMonth} DIEN NUOC`.trim();
+  const singleTransferDesc = `${data.roomCode} ${shortMonth}`.trim();
+
+  const roomQrUrl =
+    paymentConfig.room.accountNumber && roomAmount > 0
+      ? buildVietQRUrl({
+          bankCode: paymentConfig.room.bank,
+          accountNumber: paymentConfig.room.accountNumber,
+          accountName: paymentConfig.room.accountName,
+          amount: roomAmount,
+          description: roomTransferDesc,
+        })
+      : null;
+
+  const serviceQrUrl =
+    paymentConfig.service.accountNumber && utilityAmount > 0
+      ? buildVietQRUrl({
+          bankCode: paymentConfig.service.bank,
+          accountNumber: paymentConfig.service.accountNumber,
+          accountName: paymentConfig.service.accountName,
+          amount: utilityAmount,
+          description: serviceTransferDesc,
+        })
+      : null;
+
+  const singleQrUrl =
+    paymentConfig.room.accountNumber && effectiveQrAmount > 0
+      ? buildVietQRUrl({
+          bankCode: paymentConfig.room.bank,
+          accountNumber: paymentConfig.room.accountNumber,
+          accountName: paymentConfig.room.accountName,
+          amount: effectiveQrAmount,
+          description: singleTransferDesc,
+        })
+      : null;
+
+  return {
+    paymentConfig,
+    isSplit,
+    hasAccount,
+    safeBasePrice,
+    safeDiscount,
+    safeTotalAmount,
+    safePaidAmount,
+    hasPartialPayment,
+    effectiveQrAmount,
+    roomAmount,
+    utilityAmount,
+    roomTransferDesc,
+    serviceTransferDesc,
+    singleTransferDesc,
+    roomQrUrl,
+    serviceQrUrl,
+    singleQrUrl,
+  };
 }
 
 interface ReceiptCanvasProps {
   data: ReceiptData;
-  qrFilter?: QrDisplayFilter;
   className?: string;
   style?: React.CSSProperties;
   id?: string;
 }
 
+/**
+ * Ảnh 1: Tờ Phiếu Báo Tiền Phòng (Bảng kê chi tiết).
+ * Khi tách 2 tài khoản (isSplit = true), bảng kê chỉ hiển thị rõ thông tin STK 2 khoản bằng chữ
+ * và tách 2 mã QR thành 2 ảnh Thẻ QR độc lập (StandaloneQrCard) để các App Ngân hàng quét ảnh 100% chuẩn xác.
+ */
 export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
-  ({ data, qrFilter, className, style, id = "receipt-canvas" }, ref) => {
-    const activeQrFilter: QrDisplayFilter = qrFilter || data.qrFilter || "all";
-
+  ({ data, className, style, id = "receipt-canvas" }, ref) => {
     const formatDate = () => {
       const today = new Date();
       const dd = String(today.getDate()).padStart(2, "0");
@@ -72,94 +192,23 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
       data.address || "325B Kv. Phú Mỹ, Thường Thạnh, Cái Răng, Cần Thơ";
     const customerName = data.customerName || "Khách thuê";
 
-    // Extract short month label for transfer description (e.g. "2026-10" -> "T10")
-    const shortMonth = data.month?.includes("-")
-      ? `T${parseInt(data.month.split("-")[1], 10) || data.month}`
-      : data.month || "";
-
-    // Payment and VietQR accounts resolution
-    const paymentConfig = data.paymentConfig || parsePaymentAccounts(data.bankInfo);
-    const isSplit = Boolean(
-      paymentConfig.split &&
-      paymentConfig.room.accountNumber &&
-      paymentConfig.service.accountNumber
-    );
-    const hasAccount = Boolean(paymentConfig.room.accountNumber);
-
-    // Ensure integer VND amounts and accurate partial payment handling
-    const safeBasePrice = Math.max(0, Math.round(data.basePrice || 0));
-    const safeDiscount = Math.max(0, Math.round(data.discount || 0));
-    const safeTotalAmount = Math.max(0, Math.round(data.totalAmount || 0));
-    const safePaidAmount =
-      data.paidAmount !== undefined && data.paidAmount !== null
-        ? Math.max(0, Math.round(data.paidAmount))
-        : 0;
-
-    const hasPartialPayment = safePaidAmount > 0 && safePaidAmount < safeTotalAmount;
-    const effectiveQrAmount = hasPartialPayment
-      ? Math.max(0, safeTotalAmount - safePaidAmount)
-      : safeTotalAmount;
-
-    const rawRoomAmount = Math.max(0, safeBasePrice - safeDiscount);
-    const rawUtilityAmount = Math.max(0, safeTotalAmount - rawRoomAmount);
-
-    let roomAmount = rawRoomAmount;
-    let utilityAmount = rawUtilityAmount;
-
-    if (hasPartialPayment) {
-      if (safePaidAmount === rawUtilityAmount && rawUtilityAmount > 0) {
-        // Tenant already paid exact utilities amount -> only room rent remains
-        utilityAmount = 0;
-        roomAmount = rawRoomAmount;
-      } else {
-        // Deduct partial payment from room rent first, then utilities
-        roomAmount = Math.max(0, rawRoomAmount - safePaidAmount);
-        const remainingPaid = Math.max(0, safePaidAmount - rawRoomAmount);
-        utilityAmount = Math.max(0, rawUtilityAmount - remainingPaid);
-      }
-    }
-
-    const roomTransferDesc = `${data.roomCode} ${shortMonth} TIEN PHONG`.trim();
-    const serviceTransferDesc = `${data.roomCode} ${shortMonth} DIEN NUOC`.trim();
-    const singleTransferDesc = `${data.roomCode} ${shortMonth}`.trim();
-
-    // Generate VietQR URLs via same-origin PNG generator (/api/qr)
-    const roomQrUrl =
-      paymentConfig.room.accountNumber && roomAmount > 0
-        ? buildVietQRUrl({
-            bankCode: paymentConfig.room.bank,
-            accountNumber: paymentConfig.room.accountNumber,
-            accountName: paymentConfig.room.accountName,
-            amount: roomAmount,
-            description: roomTransferDesc,
-          })
-        : null;
-
-    const serviceQrUrl =
-      paymentConfig.service.accountNumber && utilityAmount > 0
-        ? buildVietQRUrl({
-            bankCode: paymentConfig.service.bank,
-            accountNumber: paymentConfig.service.accountNumber,
-            accountName: paymentConfig.service.accountName,
-            amount: utilityAmount,
-            description: serviceTransferDesc,
-          })
-        : null;
-
-    const singleQrUrl =
-      paymentConfig.room.accountNumber && effectiveQrAmount > 0
-        ? buildVietQRUrl({
-            bankCode: paymentConfig.room.bank,
-            accountNumber: paymentConfig.room.accountNumber,
-            accountName: paymentConfig.room.accountName,
-            amount: effectiveQrAmount,
-            description: singleTransferDesc,
-          })
-        : null;
-
-    const showRoomCard = activeQrFilter === "all" || activeQrFilter === "room";
-    const showServiceCard = activeQrFilter === "all" || activeQrFilter === "service";
-    const isSingleFocusedQr = activeQrFilter === "room" || activeQrFilter === "service";
+    const {
+      paymentConfig,
+      isSplit,
+      hasAccount,
+      safeBasePrice,
+      safeDiscount,
+      safeTotalAmount,
+      safePaidAmount,
+      hasPartialPayment,
+      effectiveQrAmount,
+      roomAmount,
+      utilityAmount,
+      roomTransferDesc,
+      serviceTransferDesc,
+      singleTransferDesc,
+      singleQrUrl,
+    } = resolveReceiptPayment(data);
 
     return (
       <div
@@ -416,187 +465,49 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
           </tbody>
         </table>
 
-        {/* VietQR Payment Section (Diagonal Anti-Collision & High-Contrast PNG Design) */}
+        {/* Payment Account Info Section */}
         {hasAccount && (
           <div className="mt-3 pt-2.5 border-t-2 border-black">
             {isSplit ? (
-              /* DUAL QR MODE: Diagonal Stagger (QR1 Left, QR2 Right) or Single Focused QR Mode */
-              <div className="space-y-4">
-                <div className="text-center">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-slate-800">
-                    {activeQrFilter === "room"
-                      ? "MÃ VIETQR BƯỚC 1: THANH TOÁN TIỀN PHÒNG"
-                      : activeQrFilter === "service"
-                      ? "MÃ VIETQR BƯỚC 2: THANH TOÁN TIỀN ĐIỆN & NƯỚC"
-                      : "QUÉT MÃ VIETQR THANH TOÁN (TÁCH RIÊNG 2 KHOẢN)"}
-                  </div>
+              /* SPLIT 2 ACCOUNTS SUMMARY ON RECEIPT (Actual QR codes are exported as 2 separate standalone cards!) */
+              <div className="space-y-2">
+                <div className="text-center text-[11px] font-black uppercase tracking-wider text-slate-800">
+                  THÔNG TIN CHUYỂN KHOẢN THANH TOÁN (TÁCH 2 KHOẢN)
                 </div>
 
-                {/* Card 1: Tiền phòng (Top Card - Xanh Dương, QR on LEFT) */}
-                {showRoomCard && (
-                  <div className="border-2 border-blue-600 rounded-xl p-3 bg-[#f0f7ff] shadow-xs">
-                    <div className="bg-blue-600 text-white font-bold text-[11px] uppercase py-1 px-2.5 rounded-md tracking-wider flex items-center justify-between mb-2.5">
-                      <span>BƯỚC 1: THANH TOÁN TIỀN PHÒNG</span>
-                      <span className="text-[10px] font-semibold bg-white/20 px-2 py-0.5 rounded-sm">
-                        {formatVND(roomAmount)} đ
-                      </span>
+                <div className="grid grid-cols-2 gap-2.5 text-xs">
+                  {/* Account 1: Room Rent */}
+                  <div className="border-2 border-blue-600 rounded-xl p-2.5 bg-[#f0f7ff]">
+                    <div className="bg-blue-600 text-white font-bold text-[10.5px] uppercase py-1 px-2 rounded-md mb-1.5 flex items-center justify-between">
+                      <span>KHOẢN 1: TIỀN PHÒNG</span>
+                      <span>{formatVND(roomAmount)} đ</span>
                     </div>
-
-                    { isSingleFocusedQr ? (
-                      /* Centered Giant Single QR for 100% Photo Library Scan Accuracy */
-                      <div className="flex flex-col items-center text-center space-y-2 py-1">
-                        {roomQrUrl ? (
-                          <div className="bg-white p-3 rounded-xl border-2 border-blue-300 inline-block shadow-xs">
-                            <img
-                              src={roomQrUrl}
-                              alt="QR Tiền phòng"
-                              crossOrigin="anonymous"
-                              style={{ imageRendering: "pixelated" }}
-                              className="w-[220px] h-[220px] object-contain block mx-auto"
-                            />
-                          </div>
-                        ) : (
-                          <div className="py-4 text-xs font-bold text-emerald-700">
-                            ✓ Khoản tiền phòng đã thanh toán đủ (0 đ)
-                          </div>
-                        )}
-                        <div className="text-xl font-black text-blue-700">
-                          {formatVND(roomAmount)} đ
-                        </div>
-                        <div className="text-xs text-slate-800 space-y-0.5 bg-white/90 px-4 py-2 rounded-lg border border-blue-200 w-full max-w-[380px] text-left">
-                          <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.room.bank)}</strong></div>
-                          <div className="font-mono">STK: <strong className="text-blue-900 bg-blue-100 px-1.5 py-0.5 rounded-sm">{paymentConfig.room.accountNumber}</strong></div>
-                          {paymentConfig.room.accountName && (
-                            <div className="uppercase text-slate-700">Chủ TK: <strong>{paymentConfig.room.accountName}</strong></div>
-                          )}
-                          <div>Nội dung CK: <strong className="text-blue-800">{roomTransferDesc}</strong></div>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Diagonal Stagger Layout: QR on LEFT, Info on RIGHT */
-                      <div className="flex items-center justify-between gap-4">
-                        {roomQrUrl ? (
-                          <div className="shrink-0 text-center">
-                            <div className="bg-white p-2 rounded-xl border-2 border-blue-300 inline-block shadow-xs">
-                              <img
-                                src={roomQrUrl}
-                                alt="QR Tiền phòng"
-                                crossOrigin="anonymous"
-                                style={{ imageRendering: "pixelated" }}
-                                className="w-[164px] h-[164px] object-contain block"
-                              />
-                            </div>
-                            <div className="text-[10px] font-extrabold text-blue-800 mt-1">
-                              QR 1: Tiền Phòng ({formatVND(roomAmount)}đ)
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="shrink-0 px-3 py-6 bg-white rounded-xl border border-blue-200 text-xs font-bold text-emerald-700">
-                            ✓ Đã thu tiền phòng
-                          </div>
-                        )}
-
-                        <div className="flex-1 min-w-0 space-y-1.5 text-left bg-white/80 p-2.5 rounded-lg border border-blue-200/80">
-                          <div className="text-xs text-slate-600 font-bold">Số tiền chuyển khoản 1 (Tiền phòng):</div>
-                          <div className="text-xl font-black text-blue-700 leading-none">
-                            {formatVND(roomAmount)} đ
-                          </div>
-                          <div className="text-[11.5px] text-slate-800 space-y-1 pt-1">
-                            <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.room.bank)}</strong></div>
-                            <div className="font-mono">STK: <strong className="text-blue-900 bg-blue-100/90 px-1.5 py-0.5 rounded-sm text-xs">{paymentConfig.room.accountNumber}</strong></div>
-                            {paymentConfig.room.accountName && (
-                              <div className="uppercase text-slate-800 leading-tight">Chủ TK: <strong>{paymentConfig.room.accountName}</strong></div>
-                            )}
-                            <div className="text-[11px] text-slate-600">Nội dung: <strong className="text-blue-800">{roomTransferDesc}</strong></div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Card 2: Tiền điện nước (Bottom Card - Cam Hổ Phách, QR on RIGHT) */}
-                {showServiceCard && (
-                  <div className="border-2 border-amber-600 rounded-xl p-3 bg-[#fffaf5] shadow-xs">
-                    <div className="bg-amber-600 text-white font-bold text-[11px] uppercase py-1 px-2.5 rounded-md tracking-wider flex items-center justify-between mb-2.5">
-                      <span>BƯỚC 2: THANH TOÁN TIỀN ĐIỆN & NƯỚC</span>
-                      <span className="text-[10px] font-semibold bg-white/20 px-2 py-0.5 rounded-sm">
-                        {formatVND(utilityAmount)} đ
-                      </span>
+                    <div className="space-y-0.5 text-[11px] text-slate-800">
+                      <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.room.bank)}</strong></div>
+                      <div className="font-mono">STK: <strong className="text-blue-900 bg-blue-100 px-1 py-0.5 rounded-sm">{paymentConfig.room.accountNumber}</strong></div>
+                      {paymentConfig.room.accountName && (
+                        <div className="truncate uppercase">Chủ TK: <strong>{paymentConfig.room.accountName}</strong></div>
+                      )}
+                      <div>Nội dung: <strong className="text-blue-800">{roomTransferDesc}</strong></div>
                     </div>
-
-                    {isSingleFocusedQr ? (
-                      /* Centered Giant Single QR for 100% Photo Library Scan Accuracy */
-                      <div className="flex flex-col items-center text-center space-y-2 py-1">
-                        {serviceQrUrl ? (
-                          <div className="bg-white p-3 rounded-xl border-2 border-amber-300 inline-block shadow-xs">
-                            <img
-                              src={serviceQrUrl}
-                              alt="QR Tiền điện nước"
-                              crossOrigin="anonymous"
-                              style={{ imageRendering: "pixelated" }}
-                              className="w-[220px] h-[220px] object-contain block mx-auto"
-                            />
-                          </div>
-                        ) : (
-                          <div className="py-4 text-xs font-bold text-emerald-700">
-                            ✓ Không phát sinh hoặc đã thu đủ tiền điện nước (0 đ)
-                          </div>
-                        )}
-                        <div className="text-xl font-black text-amber-700">
-                          {formatVND(utilityAmount)} đ
-                        </div>
-                        <div className="text-xs text-slate-800 space-y-0.5 bg-white/90 px-4 py-2 rounded-lg border border-amber-200 w-full max-w-[380px] text-left">
-                          <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.service.bank)}</strong></div>
-                          <div className="font-mono">STK: <strong className="text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded-sm">{paymentConfig.service.accountNumber}</strong></div>
-                          {paymentConfig.service.accountName && (
-                            <div className="uppercase text-slate-700">Chủ TK: <strong>{paymentConfig.service.accountName}</strong></div>
-                          )}
-                          <div>Nội dung CK: <strong className="text-amber-800">{serviceTransferDesc}</strong></div>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Diagonal Stagger Layout: Info on LEFT, QR on RIGHT */
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 min-w-0 space-y-1.5 text-left bg-white/80 p-2.5 rounded-lg border border-amber-200/80">
-                          <div className="text-xs text-slate-600 font-bold">Số tiền chuyển khoản 2 (Điện & Nước):</div>
-                          <div className="text-xl font-black text-amber-700 leading-none">
-                            {formatVND(utilityAmount)} đ
-                          </div>
-                          <div className="text-[11.5px] text-slate-800 space-y-1 pt-1">
-                            <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.service.bank)}</strong></div>
-                            <div className="font-mono">STK: <strong className="text-amber-900 bg-amber-100/90 px-1.5 py-0.5 rounded-sm text-xs">{paymentConfig.service.accountNumber}</strong></div>
-                            {paymentConfig.service.accountName && (
-                              <div className="uppercase text-slate-800 leading-tight">Chủ TK: <strong>{paymentConfig.service.accountName}</strong></div>
-                            )}
-                            <div className="text-[11px] text-slate-600">Nội dung: <strong className="text-amber-800">{serviceTransferDesc}</strong></div>
-                          </div>
-                        </div>
-
-                        {serviceQrUrl ? (
-                          <div className="shrink-0 text-center">
-                            <div className="bg-white p-2 rounded-xl border-2 border-amber-300 inline-block shadow-xs">
-                              <img
-                                src={serviceQrUrl}
-                                alt="QR Tiền điện nước"
-                                crossOrigin="anonymous"
-                                style={{ imageRendering: "pixelated" }}
-                                className="w-[164px] h-[164px] object-contain block"
-                              />
-                            </div>
-                            <div className="text-[10px] font-extrabold text-amber-800 mt-1">
-                              QR 2: Điện Nước ({formatVND(utilityAmount)}đ)
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="shrink-0 px-3 py-6 bg-white rounded-xl border border-amber-200 text-xs font-bold text-emerald-700">
-                            ✓ Không phát sinh (0 đ)
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
-                )}
+
+                  {/* Account 2: Utilities */}
+                  <div className="border-2 border-amber-600 rounded-xl p-2.5 bg-[#fffaf5]">
+                    <div className="bg-amber-600 text-white font-bold text-[10.5px] uppercase py-1 px-2 rounded-md mb-1.5 flex items-center justify-between">
+                      <span>KHOẢN 2: ĐIỆN & NƯỚC</span>
+                      <span>{formatVND(utilityAmount)} đ</span>
+                    </div>
+                    <div className="space-y-0.5 text-[11px] text-slate-800">
+                      <div>Ngân hàng: <strong>{getBankDisplayName(paymentConfig.service.bank)}</strong></div>
+                      <div className="font-mono">STK: <strong className="text-amber-900 bg-amber-100 px-1 py-0.5 rounded-sm">{paymentConfig.service.accountNumber}</strong></div>
+                      {paymentConfig.service.accountName && (
+                        <div className="truncate uppercase">Chủ TK: <strong>{paymentConfig.service.accountName}</strong></div>
+                      )}
+                      <div>Nội dung: <strong className="text-amber-800">{serviceTransferDesc}</strong></div>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
               /* SINGLE QR MODE: 1 Unified Account for Effective Remaining Amount */
@@ -653,3 +564,142 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
 );
 
 ReceiptCanvas.displayName = "ReceiptCanvas";
+
+export interface StandaloneQrCardProps {
+  data: ReceiptData;
+  kind: "room" | "service";
+  className?: string;
+  id?: string;
+}
+
+/**
+ * Thẻ QR Độc Lập (Ảnh 2: Thẻ QR Tiền Phòng & Ảnh 3: Thẻ QR Điện Nước).
+ * Mỗi bức ảnh chỉ chứa DUY NHẤT 1 Mã QR cỡ đại (280x280px) ở chính giữa,
+ * đảm bảo khi khách chọn ảnh từ thư viện trong App Ngân hàng sẽ quét trúng 100% đúng số tiền.
+ */
+export const StandaloneQrCard = forwardRef<HTMLDivElement, StandaloneQrCardProps>(
+  ({ data, kind, className, id }, ref) => {
+    const {
+      paymentConfig,
+      roomAmount,
+      utilityAmount,
+      roomTransferDesc,
+      serviceTransferDesc,
+      roomQrUrl,
+      serviceQrUrl,
+    } = resolveReceiptPayment(data);
+
+    const isRoom = kind === "room";
+    const amount = isRoom ? roomAmount : utilityAmount;
+    const qrUrl = isRoom ? roomQrUrl : serviceQrUrl;
+    const account = isRoom ? paymentConfig.room : paymentConfig.service;
+    const transferDesc = isRoom ? roomTransferDesc : serviceTransferDesc;
+
+    return (
+      <div
+        ref={ref}
+        id={id}
+        className={cn(
+          "bg-white text-slate-900 mx-auto p-5 w-[440px] font-sans select-none rounded-2xl border-2",
+          isRoom ? "border-blue-600 bg-[#f5f9ff]" : "border-amber-600 bg-[#fffaf2]",
+          className
+        )}
+        style={{ minWidth: "440px", maxWidth: "440px" }}
+      >
+        {/* Top Banner */}
+        <div
+          className={cn(
+            "text-white text-center py-2.5 px-4 rounded-xl font-extrabold uppercase tracking-wide shadow-xs",
+            isRoom ? "bg-blue-600" : "bg-amber-600"
+          )}
+        >
+          <div className="text-[11px] opacity-90 font-bold">
+            NHÀ TRỌ TRÚC LAM • PHÒNG {data.roomCode} ({data.month})
+          </div>
+          <div className="text-sm mt-0.5">
+            {isRoom
+              ? "KHOẢN 1: THANH TOÁN TIỀN PHÒNG"
+              : "KHOẢN 2: THANH TOÁN ĐIỆN & NƯỚC"}
+          </div>
+        </div>
+
+        {/* Single Centered Giant QR Code */}
+        <div className="my-4 flex flex-col items-center justify-center">
+          {qrUrl ? (
+            <div
+              className={cn(
+                "bg-white p-3.5 rounded-2xl border-2 shadow-xs inline-block",
+                isRoom ? "border-blue-300" : "border-amber-300"
+              )}
+            >
+              <img
+                src={qrUrl}
+                alt={isRoom ? "Mã QR Tiền Phòng" : "Mã QR Điện Nước"}
+                crossOrigin="anonymous"
+                style={{ imageRendering: "pixelated" }}
+                className="w-[280px] h-[280px] object-contain block mx-auto"
+              />
+            </div>
+          ) : (
+            <div className="py-10 px-6 bg-white rounded-2xl border text-center text-xs font-bold text-emerald-700">
+              ✓ Khoản này không phát sinh hoặc đã thanh toán đủ (0 đ)
+            </div>
+          )}
+
+          {/* Amount Highlight */}
+          <div className="mt-3 text-center">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Số tiền thanh toán
+            </div>
+            <div
+              className={cn(
+                "text-2xl font-black tracking-tight mt-0.5",
+                isRoom ? "text-blue-700" : "text-amber-700"
+              )}
+            >
+              {formatVND(amount)} đ
+            </div>
+          </div>
+        </div>
+
+        {/* Account Details Box */}
+        <div
+          className={cn(
+            "bg-white rounded-xl p-3 border text-xs space-y-1 text-slate-800",
+            isRoom ? "border-blue-200" : "border-amber-200"
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500 font-medium">Ngân hàng:</span>
+            <strong className="text-slate-900">{getBankDisplayName(account.bank)}</strong>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500 font-medium">Số tài khoản:</span>
+            <strong
+              className={cn(
+                "font-mono text-sm px-1.5 py-0.5 rounded-sm",
+                isRoom ? "bg-blue-100 text-blue-900" : "bg-amber-100 text-amber-900"
+              )}
+            >
+              {account.accountNumber}
+            </strong>
+          </div>
+          {account.accountName && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-500 font-medium shrink-0">Chủ tài khoản:</span>
+              <strong className="uppercase text-right truncate">{account.accountName}</strong>
+            </div>
+          )}
+          <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+            <span className="text-slate-500 font-medium">Nội dung CK:</span>
+            <strong className={isRoom ? "text-blue-700" : "text-amber-700"}>
+              {transferDesc}
+            </strong>
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
+StandaloneQrCard.displayName = "StandaloneQrCard";
