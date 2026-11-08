@@ -430,11 +430,6 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                       ? "MÃ VIETQR BƯỚC 2: THANH TOÁN TIỀN ĐIỆN & NƯỚC"
                       : "QUÉT MÃ VIETQR THANH TOÁN (TÁCH RIÊNG 2 KHOẢN)"}
                   </div>
-                  <p className="text-[10px] text-slate-600 font-medium mt-0.5">
-                    {isSingleFocusedQr
-                      ? "Ảnh chỉ có 1 mã QR cỡ lớn — Mở App Ngân hàng chọn ảnh này từ thư viện để quét chính xác 100%"
-                      : "Mã Bước 1 đặt bên TRÁI, Mã Bước 2 đặt bên PHẢI để chống camera quét nhầm"}
-                  </p>
                 </div>
 
                 {/* Card 1: Tiền phòng (Top Card - Xanh Dương, QR on LEFT) */}
@@ -517,16 +512,6 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
-
-                {/* Wide Safety Buffer & Transition Divider when showing both QR codes */}
-                {showRoomCard && showServiceCard && (
-                  <div className="relative flex items-center justify-center py-2">
-                    <div className="border-t-2 border-dashed border-slate-400 w-full"></div>
-                    <div className="absolute bg-slate-900 text-white px-3.5 py-1 rounded-full text-[10px] font-bold tracking-wide shadow-xs">
-                      ⬇ KHOẢNG CÁCH AN TOÀN — QUÉT TIẾP BƯỚC 2 BÊN PHẢI ⬇
-                    </div>
                   </div>
                 )}
 
