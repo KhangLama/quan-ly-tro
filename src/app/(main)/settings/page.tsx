@@ -3,33 +3,43 @@
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ChevronLeft, Settings, Info, Sliders, FileText } from "lucide-react";
+import {
+  ChevronLeft,
+  Settings,
+  Info,
+  Sliders,
+  FileText,
+  KeyRound,
+} from "lucide-react";
 import { SettingsForm } from "@/components/settings/SettingsForm";
 import { ChangePasswordCard } from "@/components/settings/ChangePasswordCard";
 import { ContractTemplateDesigner } from "@/components/settings/ContractTemplateDesigner";
 import { Card } from "@/components/ui/Card";
 
+type SettingsTab = "general" | "security" | "contract";
+
 function SettingsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTab =
-    searchParams.get("tab") === "contract" ? "contract" : "general";
-  const [activeTab, setActiveTab] = useState<"general" | "contract">(
-    initialTab
+
+  const getTabFromUrl = (tabParam: string | null): SettingsTab => {
+    if (tabParam === "contract") return "contract";
+    if (tabParam === "security") return "security";
+    return "general";
+  };
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
+    getTabFromUrl(searchParams.get("tab"))
   );
 
   useEffect(() => {
     const tabParam = searchParams.get("tab");
-    if (tabParam === "contract") {
-      setActiveTab("contract");
-    } else if (tabParam === "general") {
-      setActiveTab("general");
-    }
+    setActiveTab(getTabFromUrl(tabParam));
   }, [searchParams]);
 
-  const handleSelectTab = (tab: "general" | "contract") => {
+  const handleSelectTab = (tab: SettingsTab) => {
     setActiveTab(tab);
-    const url = tab === "contract" ? "/settings?tab=contract" : "/settings";
+    const url = tab === "general" ? "/settings" : `/settings?tab=${tab}`;
     router.replace(url, { scroll: false });
   };
 
@@ -53,7 +63,7 @@ function SettingsPageContent() {
             <span>Cài đặt hệ thống</span>
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Cấu hình đơn giá điện nước, tài khoản VietQR, bảo mật và thiết kế mẫu hợp đồng thuê trọ
+            Cấu hình đơn giá điện nước, tài khoản VietQR, đổi mật khẩu quản trị và thiết kế mẫu hợp đồng thuê trọ
           </p>
         </div>
       </div>
@@ -77,7 +87,23 @@ function SettingsPageContent() {
           }`}
         >
           <Sliders className="w-4 h-4 shrink-0" />
-          <span>Cài đặt chung & Bảo mật</span>
+          <span>Đơn giá & Ngân hàng</span>
+        </button>
+
+        <button
+          type="button"
+          role="tab"
+          id="settings-tab-security"
+          aria-selected={activeTab === "security"}
+          onClick={() => handleSelectTab("security")}
+          className={`flex-none inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
+            activeTab === "security"
+              ? "bg-indigo-50/90 text-indigo-700 border-b-2 border-indigo-600 shadow-2xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-50 border-b-2 border-transparent"
+          }`}
+        >
+          <KeyRound className="w-4 h-4 shrink-0" />
+          <span>Đổi mật khẩu Admin</span>
         </button>
 
         <button
@@ -106,6 +132,17 @@ function SettingsPageContent() {
         {activeTab === "general" && (
           <div className="space-y-4">
             <SettingsForm />
+          </div>
+        )}
+      </div>
+
+      <div
+        role="tabpanel"
+        aria-labelledby="settings-tab-security"
+        hidden={activeTab !== "security"}
+      >
+        {activeTab === "security" && (
+          <div className="space-y-4">
             <ChangePasswordCard />
           </div>
         )}
