@@ -89,7 +89,7 @@ export function Header() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-black text-slate-900 leading-tight tracking-tight group-hover:text-indigo-600 transition-colors">
-                Nhà trọ Trúc Lam
+                Nhà trọ Anh Thư
               </h1>
               <span className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100/80">
                 Host

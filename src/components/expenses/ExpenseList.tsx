@@ -46,7 +46,7 @@ export function ExpenseList({
   initialTotalAmount,
   initialTotalPendingAmount,
   initialTotalPaidAmount,
-  innName = "NHÀ TRỌ TRÚC LAM",
+  innName = "NHÀ TRỌ ANH THƯ",
 }: ExpenseListProps) {
   const tableRef = useRef<HTMLDivElement>(null);
   const [month, setMonth] = useState<string>(initialMonth);

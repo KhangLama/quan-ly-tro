@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   AUTH_COOKIE_NAME,
   AUTH_COOKIE_OPTIONS,
-  getAdminPassword,
 } from "@/lib/auth/constants";
 import { createAuthToken } from "@/lib/auth/session";
+import { verifyAdminPassword } from "@/lib/auth/password";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,20 +14,23 @@ export async function POST(request: NextRequest) {
     if (contentType.includes("application/json")) {
       const body = await request.json();
       password = body.password || "";
-    } else if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
+    } else if (
+      contentType.includes("application/x-www-form-urlencoded") ||
+      contentType.includes("multipart/form-data")
+    ) {
       const formData = await request.formData();
       password = (formData.get("password") as string) || "";
     }
 
-    if (!password || typeof password !== "string") {
+    if (!password || typeof password !== "string" || !password.trim()) {
       return NextResponse.json(
         { success: false, message: "Vui lòng nhập mật khẩu" },
         { status: 400 }
       );
     }
 
-    const adminPassword = getAdminPassword();
-    if (password.trim() !== adminPassword.trim()) {
+    const isValid = await verifyAdminPassword(password);
+    if (!isValid) {
       return NextResponse.json(
         { success: false, message: "Mật khẩu không chính xác" },
         { status: 401 }

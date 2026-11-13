@@ -6,7 +6,7 @@ import { getSettings } from "@/actions/settings";
 import { ExpenseList } from "@/components/expenses/ExpenseList";
 
 export const metadata = {
-  title: "Quản lý Chi phí - Nhà trọ Trúc Lam",
+  title: "Quản lý Chi phí - Nhà trọ Anh Thư",
   description: "Theo dõi và quản lý chi phí phát sinh hàng tháng của nhà trọ",
 };
 
@@ -36,7 +36,7 @@ export default async function ExpensesPage() {
         initialTotalAmount={expenseData.totalAmount}
         initialTotalPendingAmount={expenseData.totalPendingAmount}
         initialTotalPaidAmount={expenseData.totalPaidAmount}
-        innName="NHÀ TRỌ TRÚC LAM"
+        innName="NHÀ TRỌ ANH THƯ"
       />
     </div>
   );

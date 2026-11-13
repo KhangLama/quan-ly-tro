@@ -221,7 +221,7 @@ export const ReceiptCanvas = forwardRef<HTMLDivElement, ReceiptCanvasProps>(
       >
         {/* Header Banner */}
         <div className="bg-[#F8D7DA] text-slate-900 font-extrabold text-center text-lg uppercase py-2 tracking-wide border-2 border-black">
-          NHÀ TRỌ TRÚC LAM
+          NHÀ TRỌ ANH THƯ
         </div>
 
         {/* Address Box */}
@@ -615,7 +615,7 @@ export const StandaloneQrCard = forwardRef<HTMLDivElement, StandaloneQrCardProps
           )}
         >
           <div className="text-[11px] opacity-90 font-bold">
-            NHÀ TRỌ TRÚC LAM • PHÒNG {data.roomCode} ({data.month})
+            NHÀ TRỌ ANH THƯ • PHÒNG {data.roomCode} ({data.month})
           </div>
           <div className="text-sm mt-0.5">
             {isRoom

@@ -55,7 +55,7 @@ describe("Unit Test: Vietnamese Zalo / SMS Message Template", () => {
     expect(msg).toContain("Điện: 120 số = 420.000đ");
     expect(msg).toContain("Nước: 15 m³ = 375.000đ");
     expect(msg).toContain("Dịch vụ: 150.000đ");
-    expect(msg).endsWith("Vui lòng thanh toán trước ngày 05. Xin cảm ơn!");
+    expect(msg.endsWith("Vui lòng thanh toán trước ngày 05. Xin cảm ơn!")).toBe(true);
   });
 
   it("verifies all Vietnamese diacritics and punctuation are preserved intact", () => {

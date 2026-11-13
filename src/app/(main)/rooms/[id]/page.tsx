@@ -17,6 +17,7 @@ import {
   Armchair,
   Check,
   Edit2,
+  Sliders,
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -27,6 +28,7 @@ import { InvoiceHistory } from "@/components/rooms/InvoiceHistory";
 import { AddTenantModal } from "@/components/rooms/AddTenantModal";
 import { EditRoomModal } from "@/components/rooms/EditRoomModal";
 import { RoomContractModal } from "@/components/rooms/RoomContractModal";
+import { RoomContractConfigModal } from "@/components/rooms/RoomContractConfigModal";
 import { RoomNoteCard } from "@/components/rooms/RoomNoteCard";
 import { getRoomById, deleteRoom, type GetRoomDetailsResult } from "@/actions/rooms";
 import { getSettings } from "@/actions/settings";
@@ -44,6 +46,7 @@ export default function RoomDetailPage() {
   const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
   const [isEditRoomModalOpen, setIsEditRoomModalOpen] = useState(false);
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [isContractConfigModalOpen, setIsContractConfigModalOpen] = useState(false);
 
   const fetchDetails = useCallback(async () => {
     setLoading(true);
@@ -116,6 +119,17 @@ export default function RoomDetailPage() {
         </Link>
 
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsContractConfigModalOpen(true)}
+            className="gap-1.5 text-xs text-indigo-700 border-indigo-200 hover:bg-indigo-50 whitespace-nowrap font-bold shadow-2xs"
+          >
+            <Sliders className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span className="hidden sm:inline">Cấu hình HĐ</span>
+            <span className="sm:hidden">Mẫu phòng</span>
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
@@ -372,6 +386,16 @@ export default function RoomDetailPage() {
           settings={settings}
           isOpen={isContractModalOpen}
           onClose={() => setIsContractModalOpen(false)}
+        />
+      )}
+
+      {/* Room Contract Config Modal */}
+      {room && (
+        <RoomContractConfigModal
+          room={room}
+          isOpen={isContractConfigModalOpen}
+          onClose={() => setIsContractConfigModalOpen(false)}
+          onSaved={fetchDetails}
         />
       )}
     </div>

@@ -8,6 +8,7 @@ async function safeRevalidatePath(path: string) {
 }
 
 import { createClient } from "../lib/supabase/server.ts";
+import { parsePaymentAccounts } from "../lib/vietqr.ts";
 import type { Setting, SettingUpdate } from "../types/index.ts";
 
 export interface SettingsActionResult {
@@ -55,7 +56,33 @@ export async function updateSettings(data: {
     if (data.electric_price !== undefined) updatePayload.electric_price = Number(data.electric_price);
     if (data.water_price !== undefined) updatePayload.water_price = Number(data.water_price);
     if (data.service_price !== undefined) updatePayload.service_price = Number(data.service_price);
-    if (data.bank_info !== undefined) updatePayload.bank_info = data.bank_info.trim();
+    if (data.bank_info !== undefined) {
+      let nextBankInfo = data.bank_info.trim();
+      try {
+        const { data: currentRow } = await supabase
+          .from("settings")
+          .select("bank_info")
+          .eq("id", 1)
+          .single();
+
+        const currentRaw = (currentRow as any)?.bank_info;
+        if (typeof currentRaw === "string" && currentRaw.trim().startsWith("{")) {
+          const currentParsed = JSON.parse(currentRaw.trim());
+          if (currentParsed && typeof currentParsed._contract_template === "object") {
+            const parsedNewAccounts = parsePaymentAccounts(nextBankInfo);
+            nextBankInfo = JSON.stringify({
+              split: parsedNewAccounts.split,
+              room: parsedNewAccounts.room,
+              service: parsedNewAccounts.service,
+              _contract_template: currentParsed._contract_template,
+            });
+          }
+        }
+      } catch {
+        // Ignore if unable to read existing bank_info
+      }
+      updatePayload.bank_info = nextBankInfo;
+    }
     if (data.address !== undefined) updatePayload.address = data.address.trim();
     if (data.service_description !== undefined) updatePayload.service_description = data.service_description.trim();
     if (data.receipt_note !== undefined) updatePayload.receipt_note = data.receipt_note.trim();

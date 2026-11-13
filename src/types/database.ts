@@ -19,6 +19,8 @@ export interface Database {
           address?: string;
           service_description?: string;
           receipt_note?: string;
+          admin_password_hash?: string | null;
+          contract_template?: Json | null;
           updated_at: string;
         };
         Insert: {
@@ -30,6 +32,8 @@ export interface Database {
           address?: string;
           service_description?: string;
           receipt_note?: string;
+          admin_password_hash?: string | null;
+          contract_template?: Json | null;
           updated_at?: string;
         };
         Update: {
@@ -41,6 +45,8 @@ export interface Database {
           address?: string;
           service_description?: string;
           receipt_note?: string;
+          admin_password_hash?: string | null;
+          contract_template?: Json | null;
           updated_at?: string;
         };
       };
@@ -50,6 +56,7 @@ export interface Database {
           code: string;
           base_price: number;
           status: "rented" | "empty";
+          contract_settings?: Json | null;
           created_at: string;
         };
         Insert: {
@@ -57,6 +64,7 @@ export interface Database {
           code: string;
           base_price?: number;
           status?: "rented" | "empty";
+          contract_settings?: Json | null;
           created_at?: string;
         };
         Update: {
@@ -64,6 +72,7 @@ export interface Database {
           code?: string;
           base_price?: number;
           status?: "rented" | "empty";
+          contract_settings?: Json | null;
           created_at?: string;
         };
       };
